@@ -1,0 +1,43 @@
+{% ckan_extends %}
+
+{% block package_additional_info %}
+{{ super() }}
+
+{# Add our custom field to the dataset read page. #}
+{% if pkg.get('agency_program') %}
+<section class="resources module-content">
+    <p><strong>Agency Program</strong>: {{ pkg.agency_program }}</p>
+</section>
+{% endif %}
+{% if pkg.get('contact_point') %}
+<section class="resources module-content">
+    <p><strong>Contact Point</strong>: {{ pkg.contact_point }}</p>
+</section>
+{% endif %}
+{% if pkg.get('spatial_coverage') %}
+<section class="resources module-content">
+    <p><strong>Geospatial Coverage</strong>: {{ pkg.spatial_coverage }}</p></section>
+{% endif %}
+{% if pkg.get('granularity') %}
+<section class="resources module-content">
+    <p><strong>Data Granularity</strong>: {{ pkg.granularity }}</p></section>
+{% endif %}
+{% if pkg.get('jurisdiction') %}
+<section class="resources module-content">
+    <p><strong>Government Jurisdiction</strong>: {{ pkg.jurisdiction }}</p></section>
+{% endif %}
+{% if pkg.get('temporal_coverage') %}
+<section class="resources module-content">
+    <p><strong>Temporal Coverage</strong>: {{ pkg.temporal_coverage }}</p></section>
+{% endif %}
+{% if pkg.get('data_state') %}
+<section class="resources module-content">
+    <p><strong>Data State</strong>: {{ pkg.data_state }}</p></section>
+{% endif %}
+{% if pkg.get('update_freq') %}
+<section class="resources module-content">
+    <p><strong>Update Frequency</strong>: {{ pkg.update_freq }}</p></section>
+
+{% endif %}
+
+{% endblock %}
