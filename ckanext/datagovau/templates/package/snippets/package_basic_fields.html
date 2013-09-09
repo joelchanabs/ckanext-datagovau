@@ -28,9 +28,8 @@ value=data.jurisdiction, error=errors.jurisdiction, classes=['control-medium']) 
 placeholder=_('The timespan the dataset relates to: Current, 2008, 2008-2012, Jan 2012'),
 value=data.temporal_coverage, error=errors.temporal_coverage, classes=['control-medium']) }}
 
-{{ form.input('data_state', label=_('Data State'), id='field-data_state',
-placeholder=_('Active or Inactive'),
-value=data.data_state, error=errors.data_state, classes=['control-medium']) }}
+{{ form.select('data_state', label=_('Data State'), options= [{'value': 'active', 'text': 'Active'}, {'value': 'inactive', 'text': 'Inactive'}],
+selected='Active', error=errors.data_state) }}
 
 {{ form.input('update_freq', label=_('Update Frequency'), id='field-update_freq',
 placeholder=_('How often the dataset is updated. Eg: Daily, Weekly, Never'),
