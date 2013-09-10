@@ -44,7 +44,7 @@
                     <owl:sameAs rdf:resource="urn:uuid:${rsc_dict.get('id')}"/>
                     <dct:description>${rsc_dict.get('description')}</dct:description>
                     <dcat:accessURL rdf:resource="${ rsc_dict.get('url') }"/>
-                    <dct:created>${rsc_dict.get('revision_timestamp')}</dct:created>
+                    <dct:created>${rsc_dict.get('created')}</dct:created>
                     <dct:modified>${rsc_dict.get('revision_timestamp')}</dct:modified>
                     <dcat:byteSize py:if="rsc_dict.get('size')">${rsc_dict.get('size')}</dcat:byteSize>
                     <dcat:mediaType py:if="rsc_dict.get('mimetype')">${rsc_dict.get('mimetype')}</dcat:mediaType>
