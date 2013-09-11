@@ -44,11 +44,11 @@
             <td class="dataset-details"> {{ pkg.get('Agency Program') }}</td>
         </tr>
         {% endif %}
-        {% if pkg.get('DCTERMS.Source.URI') %}
+        {% if h.get_pkg_dict_extra(pkg,'DCTERMS.Source.URI') %}
         <tr>
             <th scope="row" class="dataset-label">{{ _('Source') }}</th>
-            <td class="dataset-details" property="dct:source">{{ h.link_to(pkg.get('DCTERMS.Source.URI'),
-                pkg.get('DCTERMS.Source.URI'), rel='dct:source', target='_blank') }}
+            <td class="dataset-details" property="dct:source">{{ h.link_to(h.get_pkg_dict_extra(pkg,'DCTERMS.Source.URI'),
+                h.get_pkg_dict_extra(pkg,'DCTERMS.Source.URI'), rel='dct:source', target='_blank') }}
             </td>
         </tr>
         {% endif %}
@@ -67,11 +67,11 @@
             <td class="dataset-details" property="dct:spatial"> {{ pkg.spatial_coverage }}</td>
         </tr>
         {% endif %}
-        {% if pkg.get('Geospatial Coverage') %}
+        {% if h.get_pkg_dict_extra(pkg,'Geospatial Coverage') %}
 
         <tr>
             <th scope="row" class="dataset-label">Geospatial Coverage</th>
-            <td class="dataset-details" property="dct:spatial"> {{ pkg.get('Geospatial Coverage') }}</td>
+            <td class="dataset-details" property="dct:spatial"> {{ h.get_pkg_dict_extra(pkg,'Geospatial Coverage') }}</td>
         </tr>
         {% endif %}
         {% if pkg.get('granularity') %}
@@ -81,11 +81,11 @@
             <td class="dataset-details"> {{ pkg.granularity }}</td>
         </tr>
         {% endif %}
-        {% if pkg.get('Granularity') %}
+        {% if h.get_pkg_dict_extra(pkg,'Granularity') %}
 
         <tr>
             <th scope="row" class="dataset-label">Data Granularity</th>
-            <td class="dataset-details"> {{ pkg.get('Granularity') }}</td>
+            <td class="dataset-details"> {{ h.get_pkg_dict_extra(pkg,'Granularity') }}</td>
         </tr>
         {% endif %}
         {% if pkg.get('jurisdiction') %}
@@ -95,11 +95,11 @@
             <td class="dataset-details" property="aglsterms:AglsJuri"> {{ pkg.jurisdiction }}</td>
         </tr>
         {% endif %}
-        {% if pkg.get('AGLSTERMS.Jurisdiction') %}
+        {% if h.get_pkg_dict_extra(pkg,'AGLSTERMS.Jurisdiction') %}
 
         <tr>
             <th scope="row" class="dataset-label">Government Jurisdiction</th>
-            <td class="dataset-details" property="aglsterms:AglsJuri"> {{ pkg.get('AGLSTERMS.Jurisdiction') }}</td>
+            <td class="dataset-details" property="aglsterms:AglsJuri"> {{ h.get_pkg_dict_extra(pkg,'AGLSTERMS.Jurisdiction') }}</td>
         </tr>
         {% endif %}
         {% if pkg.get('temporal_coverage') %}
@@ -109,11 +109,11 @@
             <td class="dataset-details" property="dct:temporal"> {{ pkg.temporal_coverage }}</td>
         </tr>
         {% endif %}
-        {% if pkg.get('Temporal Coverage') %}
+        {% if h.get_pkg_dict_extra(pkg,'Temporal Coverage') %}
 
         <tr>
             <th scope="row" class="dataset-label">Temporal Coverage</th>
-            <td class="dataset-details" property="dct:temporal"> {{ pkg.get('Temporal Coverage') }}</td>
+            <td class="dataset-details" property="dct:temporal"> {{ h.get_pkg_dict_extra(pkg,'Temporal Coverage') }}</td>
         </tr>
         {% endif %}
         {% if pkg.get('data_state') %}
@@ -130,10 +130,10 @@
             <td class="dataset-details"> {{ pkg.update_freq }}</td>
         </tr>
         {% endif %}
-        {% if pkg.get('Update Frequency') %}
+        {% if h.get_pkg_dict_extra(pkg,'Update Frequency') %}
         <tr>
             <th scope="row" class="dataset-label">Update Frequency</th>
-            <td class="dataset-details"> {{ pkg.get('Update Frequency') }}</td>
+            <td class="dataset-details"> {{ h.get_pkg_dict_extra(pkg,'Update Frequency') }}</td>
         </tr>
         {% endif %}
 

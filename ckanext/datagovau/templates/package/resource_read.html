@@ -14,11 +14,11 @@
 <meta name="DCTERMS.Creator" scheme="AGLSTERMS.AglsAgent" content="{{ pkg['organization']['title'] }}" />
 <meta name="DCTERMS.Modified" scheme="DCTERMS.ISO8601" content="{{res['revision_timestamp']}}" />
 <meta name="DCTERMS.Published" scheme="DCTERMS.ISO8601" content="{{res['created']}}" />
-{% if  pkg.get('DCTERMS.Source.URI') %}<meta name="DCTERMS.Source.URI" content="{{pkg.get('DCTERMS.Source.URI')}}" />{% endif %}
+{% if  h.get_pkg_dict_extra(pkg,'DCTERMS.Source.URI') %}<meta name="DCTERMS.Source.URI" content="{{h.get_pkg_dict_extra(pkg,'DCTERMS.Source.URI')}}" />{% endif %}
 <meta name="DCTERMS.License" content="{{pkg['license_url']}}" />
-<meta name="DCTERMS.Coverage.Temporal" content="{{pkg.temporal_coverage or pkg.get('Temporal Coverage')}}" />
-<meta name="DCTERMS.Coverage.Spatial" content="{{pkg.spatial_coverage or pkg.get('Geospatial Coverage')}}" />
-<meta name="AGLSTERMS.Jurisdiction" scheme="AGLSTERMS.AglsJuri" content="{{pkg.jurisdiction or pkg.get('AGLSTERMS.Jurisdiction')}}" />
+<meta name="DCTERMS.Coverage.Temporal" content="{{pkg.temporal_coverage or h.get_pkg_dict_extra(pkg,'Temporal Coverage')}}" />
+<meta name="DCTERMS.Coverage.Spatial" content="{{pkg.spatial_coverage or h.get_pkg_dict_extra(pkg,'Geospatial Coverage')}}" />
+<meta name="AGLSTERMS.Jurisdiction" scheme="AGLSTERMS.AglsJuri" content="{{pkg.jurisdiction or h.get_pkg_dict_extra(pkg,'AGLSTERMS.Jurisdiction')}}" />
 <meta name="DCAT.Theme" scheme="VO" content="{% for x in pkg.groups %}{{x['title']}},{% endfor %}" />
 <meta name="DCAT.byteSize" content="{{res.get('size')}}" />
 <meta name="DCAT.mediaType" content="{{res.get('mimetype')}}" />
