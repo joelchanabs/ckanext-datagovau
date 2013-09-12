@@ -137,19 +137,26 @@
         </tr>
         {% endif %}
 
-        {% if pkg.maintainer_email %}
+{% set email =h.get_last_active_user(c.pkg_dict['id']).get('email','') %}
         <tr>
             <th scope="row" class="dataset-label">{{ _('Maintainer') }}</th>
             <td class="dataset-details" property="dc:contributor">{{
-                h.mail_to(email_address=pkg.maintainer_email, name=pkg.maintainer) }}
+		  h.mail_to(email_address=(email or ' '), name=h.get_last_active_user(c.pkg_dict['id']).get("display_name",'')) }}
             </td>
         </tr>
-        {% elif pkg.maintainer %}
         <tr>
-            <th scope="row" class="dataset-label">{{ _('Maintainer') }}</th>
-            <td class="dataset-details" property="dc:contributor">{{ pkg.maintainer }}</td>
+            <th scope="row" class="dataset-label">Publisher/Agency</th>
+            <td class="dataset-details" property="dc:publisher">{{ c.pkg_dict['organization']['title']}}
+            </td>
         </tr>
-        {% endif %}
+        <tr>
+            <th scope="row" class="dataset-label">Type</th>
+            <td class="dataset-details" property="dc:type">Dataset</td>
+        </tr>
+        <tr>
+            <th scope="row" class="dataset-label">Language</th>
+            <td class="dataset-details" property="dc:language">English</td>
+        </tr>
 
         </tbody>
     </table>

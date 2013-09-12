@@ -24,7 +24,17 @@
         <dct:issued>${c.pkg_dict['metadata_created']}</dct:issued>
         <dct:modified>${c.pkg_dict['metadata_modified']}</dct:modified>
         <dct:language>en</dct:language>
+
+<py:choose>
+  <py:when test="c.pkg_dict.get('license_url',None)">
         <dct:license>${c.pkg_dict['license_url']}</dct:license>
+        <dct:rights rdf:resource="${c.pkg_dict['license_url']}"/>
+  </py:when>
+  <py:otherwise>
+        <dct:license>${c.pkg_dict['license_id']}</dct:license>
+        <dct:rights rdf:resource="${c.pkg_dict['license_id']}"/>
+  </py:otherwise>
+</py:choose>
         <py:for each="tag_dict in c.pkg_dict.get('tags',[])">
             <dcat:keyword>${ tag_dict["name"] }</dcat:keyword>
         </py:for>
@@ -69,16 +79,14 @@
                 <foaf:name>${ c.pkg_dict['organization']['title'] }</foaf:name>
             </rdf:Description>
         </dct:creator>
-        <dct:contributor
-                py:with="username = h.get_action('package_activity_list',{'id':c.pkg_dict['id']})[0]['user_id']">
+        <dct:contributor>
             <rdf:Description>
-                <foaf:name>${h.get_action("user_show",{"id":username})["display_name"]}</foaf:name>
-                <foaf:mbox py:if="h.get_action('user_show',{'id':username}).get('email', None)"
-                           rdf:resource="mailto:${h.get_action('user_show',{'id':username})['email']}"/>
+                <foaf:name>${h.get_last_active_user(c.pkg_dict['id'])["display_name"]}</foaf:name>
+                <foaf:mbox py:if="h.get_last_active_user(c.pkg_dict['id']).get('email', None)"
+                           rdf:resource="mailto:${h.get_last_active_user(c.pkg_dict['id'])['email']}"/>
             </rdf:Description>
         </dct:contributor>
 
-        <dct:rights py:if="c.pkg_dict.get('license_url', None)" rdf:resource="${c.pkg_dict['license_url']}"/>
 
         <foaf:homepage py:if="h.get_pkg_dict_extra(c.pkg_dict,'DCTERMS.Source.URI')">${h.get_pkg_dict_extra(c.pkg_dict,'DCTERMS.Source.URI') }
         </foaf:homepage>

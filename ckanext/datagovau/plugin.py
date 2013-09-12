@@ -1,21 +1,20 @@
 import logging
 
 import ckan.plugins as plugins
+import ckan.lib as lib
+import ckan.lib.dictization.model_dictize as model_dictize
 import ckan.plugins.toolkit as tk
+import ckan.model as model
 
-
-# get_action will be deprecated soon, this is the replacement
-def get_user(user):
-    user_name = unicode(user)
-    if user_name:
-        user_obj = model.User.get(id)
-        context['user_obj'] = user_obj
-        if user_obj is None:
-            raise NotFound
+#parse the activity feed for last active non-system user
+def get_last_active_user(id):
+    system_user = "de0ba262-83fe-45e2-adda-41bb9f0c86d8"
+    user_list = [x for x in lib.helpers.get_action('package_activity_list',{'id':id}) if x['user_id'] != system_user]
+    user = user_list[0]['user_id']
+    if user is None:
+	return lib.helpers.get_action('user_show',{'id':system_user})
     else:
-        raise NotFound
-
-    return model_dictize.user_dictize(user_obj,context)
+	return lib.helpers.get_action('user_show',{'id':user})
 
 
 class ExampleIDatasetFormPlugin(plugins.SingletonPlugin,
@@ -53,7 +52,7 @@ class ExampleIDatasetFormPlugin(plugins.SingletonPlugin,
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
-        return {'getuser': get_user}
+        return {'get_last_active_user': get_last_active_user}
 
     def is_fallback(self):
         # Return True to register this plugin as the default handler for
