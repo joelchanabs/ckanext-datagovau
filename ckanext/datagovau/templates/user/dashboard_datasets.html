@@ -1,0 +1,15 @@
+{% ckan_extends %}
+
+{% block primary_content_inner %}
+  <h2 class="page-heading">{{ _('My Datasets') }}</h2>
+  {% if h.get_user_datasets(c.user_dict) %}
+    {% snippet 'snippets/package_list.html', packages=h.get_user_datasets(c.user_dict) %}
+  {% else %}
+    <p class="empty">
+      You haven\'t created/edited any datasets.
+      {% if h.check_access('package_create') %}
+        {% link_for _('Create one now?'), controller='package', action='new' %}
+      {% endif %}
+    </p>
+  {% endif %}
+{% endblock %}

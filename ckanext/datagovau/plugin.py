@@ -16,6 +16,15 @@ def get_last_active_user(id):
     else:
 	return lib.helpers.get_action('user_show',{'id':user})
 
+# get user created datasets and those they have edited
+def get_user_datasets(user_dict):
+    created_datasets_list = user_dict['datasets']
+    active_datasets_id_list = [x['data']['package'] for x in 
+				lib.helpers.get_action('user_activity_list',{'id':user_dict['id']}) if x['data'].get('package')]
+    active_datasets_list = active_datasets_id_list #if you need more detail, fetch each dataset here
+    print active_datasets_list
+    return created_datasets_list + active_datasets_list
+
 
 class ExampleIDatasetFormPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
@@ -52,7 +61,7 @@ class ExampleIDatasetFormPlugin(plugins.SingletonPlugin,
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
-        return {'get_last_active_user': get_last_active_user}
+        return {'get_last_active_user': get_last_active_user, 'get_user_datasets': get_user_datasets}
 
     def is_fallback(self):
         # Return True to register this plugin as the default handler for
