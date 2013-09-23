@@ -5,24 +5,25 @@ import ckan.lib as lib
 import ckan.lib.dictization.model_dictize as model_dictize
 import ckan.plugins.toolkit as tk
 import ckan.model as model
+from pylons import config
 
 #parse the activity feed for last active non-system user
 def get_last_active_user(id):
-    system_user = "de0ba262-83fe-45e2-adda-41bb9f0c86d8"
-    user_list = [x for x in lib.helpers.get_action('package_activity_list',{'id':id}) if x['user_id'] != system_user]
-    user = user_list[0]['user_id']
+    system_user = lib.helpers.get_action('user_show',{'id': config.get('ckan.site_id', 'ckan_site_user')})
+    user_list = [x for x in lib.helpers.get_action('package_activity_list',{'id':id}) if x['user_id'] != system_user['id']]
+    user = None
+    if len(user_list) > 0:
+    	user = user_list[0].get('user_id', None)
     if user is None:
-	return lib.helpers.get_action('user_show',{'id':system_user})
+	return system_user
     else:
 	return lib.helpers.get_action('user_show',{'id':user})
 
 # get user created datasets and those they have edited
 def get_user_datasets(user_dict):
     created_datasets_list = user_dict['datasets']
-    active_datasets_id_list = [x['data']['package'] for x in 
+    active_datasets_list = [x['data']['package'] for x in 
 				lib.helpers.get_action('user_activity_list',{'id':user_dict['id']}) if x['data'].get('package')]
-    active_datasets_list = active_datasets_id_list #if you need more detail, fetch each dataset here
-    print active_datasets_list
     return created_datasets_list + active_datasets_list
 
 
