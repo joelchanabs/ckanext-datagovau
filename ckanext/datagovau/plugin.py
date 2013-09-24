@@ -26,6 +26,8 @@ def get_user_datasets(user_dict):
 				lib.helpers.get_action('user_activity_list',{'id':user_dict['id']}) if x['data'].get('package')]
     return created_datasets_list + active_datasets_list
 
+def datastore_search(context, data_dict):
+        return {'success': True} # allow all
 
 class DataGovAuPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
@@ -39,8 +41,7 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     plugins.implements(plugins.ITemplateHelpers, inherit=False)
     plugins.implements(plugins.IAuthFunctions)
 
-    def datastore_search(context, data_dict):
-        return {'success': True} # allow all
+
 
     def get_auth_functions(self):
         return {'datastore_search': datastore_search}
@@ -72,17 +73,17 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
 
 
     def create_package_schema(self):
-        schema = super(ExampleIDatasetFormPlugin, self).create_package_schema()
+        schema = super(DataGovAuPlugin, self).create_package_schema()
         schema = self._modify_package_schema(schema)
         return schema
 
     def update_package_schema(self):
-        schema = super(ExampleIDatasetFormPlugin, self).update_package_schema()
+        schema = super(DataGovAuPlugin, self).update_package_schema()
         schema = self._modify_package_schema(schema)
         return schema
 
     def show_package_schema(self):
-        schema = super(ExampleIDatasetFormPlugin, self).show_package_schema()
+        schema = super(DataGovAuPlugin, self).show_package_schema()
 
         # Don't show vocab tags mixed in with normal 'free' tags
         # (e.g. on dataset pages, or on the search page)
@@ -145,24 +146,24 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     # called.
 
     def setup_template_variables(self, context, data_dict):
-        return super(ExampleIDatasetFormPlugin, self).setup_template_variables(
+        return super(DataGovAuPlugin, self).setup_template_variables(
             context, data_dict)
 
     def new_template(self):
-        return super(ExampleIDatasetFormPlugin, self).new_template()
+        return super(DataGovAuPlugin, self).new_template()
 
     def read_template(self):
-        return super(ExampleIDatasetFormPlugin, self).read_template()
+        return super(DataGovAuPlugin, self).read_template()
 
     def edit_template(self):
-        return super(ExampleIDatasetFormPlugin, self).edit_template()
+        return super(DataGovAuPlugin, self).edit_template()
 
     def search_template(self):
-        return super(ExampleIDatasetFormPlugin, self).search_template()
+        return super(DataGovAuPlugin, self).search_template()
 
     def history_template(self):
-        return super(ExampleIDatasetFormPlugin, self).history_template()
+        return super(DataGovAuPlugin, self).history_template()
 
     def package_form(self):
-        return super(ExampleIDatasetFormPlugin, self).package_form()
+        return super(DataGovAuPlugin, self).package_form()
 
