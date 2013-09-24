@@ -21,6 +21,6 @@ setup(
 	entry_points=\
 	"""
         [ckan.plugins]
-	datagovau=ckanext.datagovau.plugin:ExampleIDatasetFormPlugin
+	datagovau=ckanext.datagovau.plugin:DataGovAuPlugin
 	""",
 )

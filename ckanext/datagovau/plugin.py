@@ -27,7 +27,7 @@ def get_user_datasets(user_dict):
     return created_datasets_list + active_datasets_list
 
 
-class ExampleIDatasetFormPlugin(plugins.SingletonPlugin,
+class DataGovAuPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
     '''An example IDatasetForm CKAN plugin.
 
@@ -37,17 +37,13 @@ class ExampleIDatasetFormPlugin(plugins.SingletonPlugin,
     plugins.implements(plugins.IConfigurer, inherit=False)
     plugins.implements(plugins.IDatasetForm, inherit=False)
     plugins.implements(plugins.ITemplateHelpers, inherit=False)
+    plugins.implements(plugins.IAuthFunctions)
 
-    # These record how many times methods that this plugin's methods are
-    # called, for testing purposes.
-    num_times_new_template_called = 0
-    num_times_read_template_called = 0
-    num_times_edit_template_called = 0
-    num_times_search_template_called = 0
-    num_times_history_template_called = 0
-    num_times_package_form_called = 0
-    num_times_check_data_dict_called = 0
-    num_times_setup_template_variables_called = 0
+    def datastore_search(context, data_dict):
+        return {'success': True} # allow all
+
+    def get_auth_functions(self):
+        return {'datastore_search': datastore_search}
 
 
     def update_config(self, config):
