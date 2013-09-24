@@ -88,40 +88,21 @@
         </dct:contributor>
 
 
-        <foaf:homepage py:if="h.get_pkg_dict_extra(c.pkg_dict,'DCTERMS.Source.URI')">${h.get_pkg_dict_extra(c.pkg_dict,'DCTERMS.Source.URI') }
-        </foaf:homepage>
-
+        <foaf:homepage py:if="c.pkg_dict.get('url')">${c.pkg_dict.get('url')}</foaf:homepage>
         <dcat:contactPoint py:if="c.pkg_dict.get('contact_point')">${c.pkg_dict.contact_point }</dcat:contactPoint>
         <dct:spatial py:if="c.pkg_dict.get('spatial_coverage')">${ c.pkg_dict.spatial_coverage }</dct:spatial>
-        <dct:spatial py:if="h.get_pkg_dict_extra(c.pkg_dict,'Geospatial Coverage')">${ h.get_pkg_dict_extra(c.pkg_dict,'Geospatial Coverage') }</dct:spatial>
         <aglsterms:AglsJuri py:if="c.pkg_dict.get('jurisdiction')">${ c.pkg_dict.jurisdiction }</aglsterms:AglsJuri>
-        <aglsterms:AglsJuri py:if="h.get_pkg_dict_extra(c.pkg_dict,'AGLSTERMS.Jurisdiction')">${ h.get_pkg_dict_extra(c.pkg_dict,'AGLSTERMS.Jurisdiction') }</aglsterms:AglsJuri>
         <dct:temporal py:if="c.pkg_dict.get('temporal_coverage')">${ c.pkg_dict.get('temporal_coverage') }</dct:temporal>
-        <dct:temporal py:if="h.get_pkg_dict_extra(c.pkg_dict,'Temporal Coverage')">${ h.get_pkg_dict_extra(c.pkg_dict,'Temporal Coverage') }</dct:temporal>
         <dct:relation py:if="c.pkg_dict.get('data_state')">
             <rdf:Description>
                 <rdfs:label>Data State</rdfs:label>
                 <rdf:value>${ c.pkg_dict.get('data_state') }</rdf:value>
             </rdf:Description>
         </dct:relation>
-
         <dct:relation py:if="c.pkg_dict.get('update_freq')">
             <rdf:Description>
                 <rdfs:label>Update Frequency</rdfs:label>
                 <rdf:value>${ c.pkg_dict.get('update_freq') }</rdf:value>
-            </rdf:Description>
-        </dct:relation>
-        <dct:relation py:if="h.get_pkg_dict_extra(c.pkg_dict,'Update Frequency')">
-            <rdf:Description>
-                <rdfs:label>Update Frequency</rdfs:label>
-                <rdf:value>${ h.get_pkg_dict_extra(c.pkg_dict,'Update Frequency') }</rdf:value>
-            </rdf:Description>
-        </dct:relation>
-
-        <dct:relation py:if="h.get_pkg_dict_extra(c.pkg_dict,'Agency Program')">
-            <rdf:Description>
-                <rdfs:label>Agency Program</rdfs:label>
-                <rdf:value>${ h.get_pkg_dict_extra(c.pkg_dict,'Agency Program') }</rdf:value>
             </rdf:Description>
         </dct:relation>
         <dct:relation py:if="c.pkg_dict.get('agency_program')">
@@ -130,20 +111,12 @@
                 <rdf:value>${ c.pkg_dict.get('agency_program') }</rdf:value>
             </rdf:Description>
         </dct:relation>
-
-        <dct:relation py:if="h.get_pkg_dict_extra(c.pkg_dict,'Granularity')">
-            <rdf:Description>
-                <rdfs:label>Data Granularity</rdfs:label>
-                <rdf:value>${ h.get_pkg_dict_extra(c.pkg_dict,'Granularity') }</rdf:value>
-            </rdf:Description>
-        </dct:relation>
         <dct:relation py:if="c.pkg_dict.get('granularity')">
             <rdf:Description>
                 <rdfs:label>Data Granularity</rdfs:label>
                 <rdf:value>${ c.pkg_dict.get('granularity') }</rdf:value>
             </rdf:Description>
         </dct:relation>
-
         <py:for each="extra_dict in c.pkg_dict.get('extras',[])">
             <dct:relation>
                 <rdf:Description>

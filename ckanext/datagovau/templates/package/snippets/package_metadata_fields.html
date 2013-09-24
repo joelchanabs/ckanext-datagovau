@@ -10,8 +10,9 @@ won't work. #}
 {# https://github.com/okfn/ckan/blob/master/ckan/templates/macros/form.html documents the macros for fields #}
 
 {% block package_metadata_fields %}
-
-
+{{ form.input('url', label=_('Source URL'), id='field-url',
+placeholder=_('URL where dataset came from or more information can be obtained'),
+value=data.url, error=errors.url, classes=['control-medium']) }}
 {{ super() }}
 
 {% endblock %}

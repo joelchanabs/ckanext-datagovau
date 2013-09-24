@@ -14,11 +14,11 @@
 <meta name="DCTERMS.Creator" scheme="AGLSTERMS.AglsAgent" content="{{ pkg['organization']['title'] }}" />
 <meta name="DCTERMS.Modified" scheme="DCTERMS.ISO8601" content="{{pkg['metadata_modified']}}" />
 <meta name="DCTERMS.Published" scheme="DCTERMS.ISO8601" content="{{pkg['metadata_created']}}" />
-{% if  h.get_pkg_dict_extra(pkg,'DCTERMS.Source.URI') %}<meta name="DCTERMS.Source.URI" content="{{h.get_pkg_dict_extra(pkg,'DCTERMS.Source.URI')}}" />{% endif %}
+<meta name="DCTERMS.Source.URI" content="{{pkg.url}}" />
 <meta name="DCTERMS.License" content="{{pkg['license_url']}}" />
-<meta name="DCTERMS.Coverage.Temporal" content="{{pkg.temporal_coverage or h.get_pkg_dict_extra(pkg,'Temporal Coverage')}}" />
-<meta name="DCTERMS.Coverage.Spatial" content="{{pkg.spatial_coverage or h.get_pkg_dict_extra(pkg,'Geospatial Coverage')}}" />
-<meta name="AGLSTERMS.Jurisdiction" scheme="AGLSTERMS.AglsJuri" content="{{pkg.jurisdiction or h.get_pkg_dict_extra(pkg,'AGLSTERMS.Jurisdiction')}}" />
+<meta name="DCTERMS.Coverage.Temporal" content="{{pkg.temporal_coverage}}" />
+<meta name="DCTERMS.Coverage.Spatial" content="{{pkg.spatial_coverage}}" />
+<meta name="AGLSTERMS.Jurisdiction" scheme="AGLSTERMS.AglsJuri" content="{{pkg.jurisdiction}}" />
 <meta name="DCAT.Theme" scheme="VO" content="{% for x in pkg.groups %}{{x['title']}},{% endfor %}" />
 <meta name="DCTERMS.Identifier" content="{{h.url_for(controller='package',action='read',id=c.pkg_dict['name'], qualified=True)}}" />
 <meta name="DCTERMS.Title" content="{{pkg['title']}}" />
@@ -30,7 +30,7 @@
 {% block package_info %}
 <div class="module context-info">
     <div class="module-content">
-        <h1 class="heading" property="dct:title">{{ pkg.title or pkg.name }}</h1>
+        <h1 class="heading" property="dc:title">{{ pkg.title or pkg.name }}</h1>
         <div class="nums">
             <dl>
                 <dt>{{ _('Followers') }}</dt>
