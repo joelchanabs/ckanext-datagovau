@@ -26,9 +26,6 @@ def get_user_datasets(user_dict):
 				lib.helpers.get_action('user_activity_list',{'id':user_dict['id']}) if x['data'].get('package')]
     return created_datasets_list + active_datasets_list
 
-def datastore_search(context, data_dict):
-        return {'success': True} # allow all datastore search
-
 class DataGovAuPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
     '''An example IDatasetForm CKAN plugin.
@@ -39,12 +36,6 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     plugins.implements(plugins.IConfigurer, inherit=False)
     plugins.implements(plugins.IDatasetForm, inherit=False)
     plugins.implements(plugins.ITemplateHelpers, inherit=False)
-    plugins.implements(plugins.IAuthFunctions)
-
-
-    def get_auth_functions(self):
-        return {'datastore_search': datastore_search}
-
 
     def update_config(self, config):
         # Add this plugin's templates dir to CKAN's extra_template_paths, so
