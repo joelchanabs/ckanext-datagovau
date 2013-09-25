@@ -27,7 +27,7 @@ def get_user_datasets(user_dict):
     return created_datasets_list + active_datasets_list
 
 def datastore_search(context, data_dict):
-        return {'success': True} # allow all
+        return {'success': True} # allow all datastore search
 
 class DataGovAuPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
@@ -40,7 +40,6 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     plugins.implements(plugins.IDatasetForm, inherit=False)
     plugins.implements(plugins.ITemplateHelpers, inherit=False)
     plugins.implements(plugins.IAuthFunctions)
-
 
 
     def get_auth_functions(self):
