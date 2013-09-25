@@ -34,6 +34,17 @@ sub vcl_recv {
     }
   }
 } 
+sub vcl_hash {
+     # http://serverfault.com/questions/112531/ignoring-get-parameters-in-varnish-vcl
+     set req.url = regsub(req.url, "/../|/.._../", "/");
+     hash_data(req.url);
+     if (req.http.host) {
+         hash_data(req.http.host);
+     } else {
+         hash_data(server.ip);
+     }
+     return (hash);
+}
 sub vcl_deliver {
     if (!resp.http.Vary) {
         set resp.http.Vary = "Accept-Encoding";   
