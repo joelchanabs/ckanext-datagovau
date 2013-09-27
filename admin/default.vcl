@@ -26,6 +26,9 @@ sub vcl_recv {
  if (req.url ~ "\.(png|gif|jpg|jpeg|swf|css|js|woff|eot)$") {
     return(lookup);
  }
+if (req.url ~ "/(..|.._..)/") {
+    set req.url = regsub(req.url, "/((?!js)..|.._..)/", "/");
+}
   if (req.http.Cookie) {
     set req.http.Cookie = regsuball(req.http.Cookie, "(^|; ) *__utm.=[^;]+;? *", "\1"); # removes all cookies named __utm? (utma, utmb...) - tracking thing
 
@@ -36,7 +39,7 @@ sub vcl_recv {
 } 
 sub vcl_hash {
      # http://serverfault.com/questions/112531/ignoring-get-parameters-in-varnish-vcl
-     set req.url = regsub(req.url, "/../|/.._../", "/");
+     set req.url = regsub(req.url, "(?:(.com|.au))/((?!js)..|.._..)/", "/");
      hash_data(req.url);
      if (req.http.host) {
          hash_data(req.http.host);

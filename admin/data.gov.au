@@ -19,6 +19,11 @@
                       ExpiresDefault "access plus 1 week"
           </FilesMatch>
 </IfModule>
+AddType application/octet-stream .woff
+<FilesMatch "\.(eot|otf|woff|ttf)$">
+  SetEnvIf Origin "^http(s)?://(.+\.)?(data.gov.au)$" origin_is=$0
+  Header set Access-Control-Allow-Origin %{origin_is}e env=origin_is
+</FilesMatch>
 
 	<Directory />
 		Options FollowSymLinks
