@@ -23,28 +23,20 @@
         <dct:description>${c.pkg_dict['notes']}</dct:description>
         <dct:issued>${c.pkg_dict['metadata_created']}</dct:issued>
         <dct:modified>${c.pkg_dict['metadata_modified']}</dct:modified>
-        <dct:language>en</dct:language>
 
 <py:choose>
   <py:when test="c.pkg_dict.get('license_url',None)">
-        <dct:license>${c.pkg_dict['license_url']}</dct:license>
+        <dct:license rdf:resource="${c.pkg_dict['license_url']}"/>
         <dct:rights rdf:resource="${c.pkg_dict['license_url']}"/>
   </py:when>
   <py:otherwise>
         <dct:license>${c.pkg_dict['license_id']}</dct:license>
-        <dct:rights rdf:resource="${c.pkg_dict['license_id']}"/>
+        <dct:rights>"${c.pkg_dict['license_id']}"</dct:rights>
   </py:otherwise>
 </py:choose>
         <py:for each="tag_dict in c.pkg_dict.get('tags',[])">
             <dcat:keyword>${ tag_dict["name"] }</dcat:keyword>
         </py:for>
-        <py:for each="group_dict in c.pkg_dict.get('groups',[])">
-            <dcat:theme>${ group_dict["title"] }</dcat:theme>
-        </py:for>
-
-        <foaf:homepage
-                rdf:resource="${ h.url_for(controller='package',action='read',id=c.pkg_dict['name'], qualified=True)}"/>
-        <rdfs:label>${c.pkg_dict['name']}</rdfs:label>
 
 
         <py:for each="rsc_dict in c.pkg_dict['resources']">
@@ -69,6 +61,9 @@
                 </dcat:Distribution>
             </dcat:distribution>
         </py:for>
+
+
+<!-- data.gov.au specific stuff below this line -->
         <dct:publisher py:if="c.pkg_dict.get('organization', None)">
             <rdf:Description>
                 <foaf:name>${ c.pkg_dict['organization']['title'] }</foaf:name>
@@ -87,10 +82,26 @@
             </rdf:Description>
         </dct:contributor>
 
-
-        <foaf:homepage py:if="c.pkg_dict.get('url')">${c.pkg_dict.get('url')}</foaf:homepage>
+        <py:for each="extra_dict in c.pkg_dict.get('extras',[])">
+            <dct:relation>
+                <rdf:Description>
+                    <rdfs:label>${extra_dict.get('key','')}</rdfs:label>
+                    <rdf:value>${extra_dict.get('value','')}</rdf:value>
+                </rdf:Description>
+            </dct:relation>
+        </py:for>
+        <dct:language>en</dct:language>
+        <foaf:homepage
+                rdf:resource="${ h.url_for(controller='package',action='read',id=c.pkg_dict['name'], qualified=True)}"/>
         <dcat:contactPoint py:if="c.pkg_dict.get('contact_point')">${c.pkg_dict.contact_point }</dcat:contactPoint>
+<py:choose>
+  <py:when test="c.pkg_dict.get('spatial',None)">
+        <dct:spatial py:if="c.pkg_dict.get('spatial')">${ c.pkg_dict.spatial }</dct:spatial>
+  </py:when>
+  <py:otherwise>
         <dct:spatial py:if="c.pkg_dict.get('spatial_coverage')">${ c.pkg_dict.spatial_coverage }</dct:spatial>
+  </py:otherwise>
+</py:choose>
         <aglsterms:AglsJuri py:if="c.pkg_dict.get('jurisdiction')">${ c.pkg_dict.jurisdiction }</aglsterms:AglsJuri>
         <dct:temporal py:if="c.pkg_dict.get('temporal_coverage')">${ c.pkg_dict.get('temporal_coverage') }</dct:temporal>
         <dct:relation py:if="c.pkg_dict.get('data_state')">
@@ -117,13 +128,5 @@
                 <rdf:value>${ c.pkg_dict.get('granularity') }</rdf:value>
             </rdf:Description>
         </dct:relation>
-        <py:for each="extra_dict in c.pkg_dict.get('extras',[])">
-            <dct:relation>
-                <rdf:Description>
-                    <rdfs:label>${extra_dict.get('key','')}</rdfs:label>
-                    <rdf:value>${extra_dict.get('value','')}</rdf:value>
-                </rdf:Description>
-            </dct:relation>
-        </py:for>
     </dcat:Dataset>
 </rdf:RDF>
