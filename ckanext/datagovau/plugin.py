@@ -7,6 +7,9 @@ import ckan.plugins.toolkit as tk
 import ckan.model as model
 from pylons import config
 
+from sqlalchemy import orm
+import ckan.model
+
 #parse the activity feed for last active non-system user
 def get_last_active_user(id):
     system_user = lib.helpers.get_action('user_show',{'id': config.get('ckan.site_id', 'ckan_site_user')})
@@ -25,6 +28,18 @@ def get_user_datasets(user_dict):
     active_datasets_list = [x['data']['package'] for x in 
 				lib.helpers.get_action('user_activity_list',{'id':user_dict['id']}) if x['data'].get('package')]
     return created_datasets_list + active_datasets_list
+
+def get_dga_stats():
+	connection = model.Session.connection()
+        res = connection.execute("SELECT 'organization', count(*) from \"group\" where type = 'organization' and state = 'active' 		union select 'package', count(*) from package where state='active' or state='draft' or state='draft-complete' 		union select 'resource', count(*) from resource where state='active' 		union select name||role, 0 from user_object_role inner join \"user\" on user_object_role.user_id = \"user\".id where name not in ('logged_in','visitor') group by name,role;")
+        return res
+
+
+def get_activity_counts():
+	connection = model.Session.connection()
+        res = connection.execute("select to_char(timestamp, 'YYYY-MM') as month,activity_type, count(*) from activity group by month, activity_type order by month;").fetchall();
+        return res
+
 
 class DataGovAuPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
@@ -49,7 +64,7 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
-        return {'get_last_active_user': get_last_active_user, 'get_user_datasets': get_user_datasets}
+        return {'get_last_active_user': get_last_active_user, 'get_user_datasets': get_user_datasets, 'get_dga_stats': get_dga_stats, 'get_activity_counts': get_activity_counts}
 
     def is_fallback(self):
         # Return True to register this plugin as the default handler for
