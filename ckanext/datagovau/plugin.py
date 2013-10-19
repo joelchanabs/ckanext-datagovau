@@ -6,6 +6,7 @@ import ckan.lib.dictization.model_dictize as model_dictize
 import ckan.plugins.toolkit as tk
 import ckan.model as model
 from pylons import config
+from routes.mapper import SubMapper, Mapper as _Mapper
 
 from sqlalchemy import orm
 import ckan.model
@@ -29,17 +30,6 @@ def get_user_datasets(user_dict):
 				lib.helpers.get_action('user_activity_list',{'id':user_dict['id']}) if x['data'].get('package')]
     return created_datasets_list + active_datasets_list
 
-def get_dga_stats():
-	connection = model.Session.connection()
-        res = connection.execute("SELECT 'organization', count(*) from \"group\" where type = 'organization' and state = 'active' 		union select 'package', count(*) from package where state='active' or state='draft' or state='draft-complete' 		union select 'resource', count(*) from resource where state='active' 		union select name||role, 0 from user_object_role inner join \"user\" on user_object_role.user_id = \"user\".id where name not in ('logged_in','visitor') group by name,role;")
-        return res
-
-
-def get_activity_counts():
-	connection = model.Session.connection()
-        res = connection.execute("select to_char(timestamp, 'YYYY-MM') as month,activity_type, count(*) from activity group by month, activity_type order by month;").fetchall();
-        return res
-
 
 class DataGovAuPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
@@ -51,6 +41,55 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     plugins.implements(plugins.IConfigurer, inherit=False)
     plugins.implements(plugins.IDatasetForm, inherit=False)
     plugins.implements(plugins.ITemplateHelpers, inherit=False)
+    plugins.implements(plugins.IRoutes, inherit=True)
+
+    def before_map(self, map):
+
+	# Helpers to reduce code clutter
+	GET = dict(method=['GET'])
+	PUT = dict(method=['PUT'])
+	POST = dict(method=['POST'])
+	DELETE = dict(method=['DELETE'])
+	GET_POST = dict(method=['GET', 'POST'])
+	# intercept API calls that we want to capture analytics on
+	register_list = [
+        	'package',
+        	'dataset',
+        	'resource',
+	        'tag',
+	        'group',
+	        'related',
+	        'revision',
+	        'licenses',
+	        'rating',
+	        'user',
+	        'activity'
+	    ]
+	register_list_str = '|'.join(register_list)
+	# /api ver 3 or none
+	with SubMapper(map, controller='ckanext.datagovau.controller:DGAApiController', path_prefix='/api{ver:/3|}',
+	                ver='/3') as m:
+		m.connect('/action/{logic_function}', action='action',
+	                  conditions=GET_POST)
+
+	# /api ver 1, 2, 3 or none
+	with SubMapper(map, controller='ckanext.datagovau.controller:DGAApiController', path_prefix='/api{ver:/1|/2|/3|}',
+	                   ver='/1') as m:
+		m.connect('/search/{register}', action='search')
+	
+	# /api/rest ver 1, 2 or none
+	with SubMapper(map, controller='ckanext.datagovau.controller:DGAApiController', path_prefix='/api{ver:/1|/2|}',
+	                   ver='/1', requirements=dict(register=register_list_str)
+	                   ) as m:
+
+		m.connect('/rest/{register}', action='list', conditions=GET)
+		m.connect('/rest/{register}', action='create', conditions=POST)
+	        m.connect('/rest/{register}/{id}', action='show', conditions=GET)
+	        m.connect('/rest/{register}/{id}', action='update', conditions=PUT)
+	        m.connect('/rest/{register}/{id}', action='update', conditions=POST)
+	        m.connect('/rest/{register}/{id}', action='delete', conditions=DELETE)
+
+        return map
 
     def update_config(self, config):
         # Add this plugin's templates dir to CKAN's extra_template_paths, so
@@ -64,7 +103,7 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
-        return {'get_last_active_user': get_last_active_user, 'get_user_datasets': get_user_datasets, 'get_dga_stats': get_dga_stats, 'get_activity_counts': get_activity_counts}
+        return {'get_last_active_user': get_last_active_user, 'get_user_datasets': get_user_datasets}
 
     def is_fallback(self):
         # Return True to register this plugin as the default handler for
