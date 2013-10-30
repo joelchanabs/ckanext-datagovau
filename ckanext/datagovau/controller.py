@@ -7,6 +7,8 @@ import hashlib
 import threading
 from ckan.common import _, c, request, response
 from pylons import config
+from webob.multidict import UnicodeMultiDict
+from paste.util.multidict import MultiDict
 
 log = logging.getLogger(__name__)
 
