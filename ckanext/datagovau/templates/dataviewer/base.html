@@ -1,0 +1,10 @@
+{% ckan_extends %}
+{% block scripts %}
+      {{ super() }}
+  <script>
+    preload_resource.url = preload_resource.url.replace("https:","").replace("http:","");
+    preload_resource.original_url = preload_resource.original_url.replace("https:","").replace("http:","");
+  </script>
+{% endblock %}
+
+
