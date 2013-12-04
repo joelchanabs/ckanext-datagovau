@@ -4,9 +4,11 @@ It comprises:
 
 * A CKAN Extension "plugin" at ``ckanext/datagovau/plugin.py`` which, when
   loaded, overrides various settings in the core ``ini``-file to provide:
-  * A path to local customisations of the core templates
+  * A path to local customisations of the core templates to include AGLS/Dublin Core minimum metadata
   * A custom Package edit form that defaults to cc-by licence
   * A custom n3/rdf output format
+  * Replaces links with http/https protocol independent versions
+  * Provides HTML to users to embed data previews on their own website
 
 * A cut down licenses.json file
 
