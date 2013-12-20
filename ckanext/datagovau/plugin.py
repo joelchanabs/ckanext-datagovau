@@ -28,8 +28,12 @@ def get_user_datasets(user_dict):
     created_datasets_list = user_dict['datasets']
     active_datasets_list = [x['data']['package'] for x in 
 				lib.helpers.get_action('user_activity_list',{'id':user_dict['id']}) if x['data'].get('package')]
-    return created_datasets_list + active_datasets_list
-
+    raw_list = created_datasets_list + active_datasets_list
+    filtered_dict = {}
+    for dataset in raw_list:
+	if dataset['id'] not in filtered_dict.keys():
+		filtered_dict[dataset['id']] = dataset
+    return filtered_dict.values()
 
 class DataGovAuPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
