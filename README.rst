@@ -7,7 +7,7 @@ It comprises:
 * Provides HTML to users to embed data previews on their own website
 * A cut down licenses.json file
 
-This extension is complimented by ckanext-agls for AGLS metadata and ckanext-googleanalytics for Google Analytics tracking of API usage
+This extension is complemented by ckanext-agls for AGLS metadata, ckanext-googleanalytics for Google Analytics tracking of API usage and ckanext-dga-stats for the customised site statistics page.
 
 Installation
 ============
