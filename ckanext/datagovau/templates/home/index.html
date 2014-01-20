@@ -2,13 +2,13 @@
           {% block home_search %}
 
 <div class="hero-secondary-inner">
-<script type="text/javascript" src="http://www.google.com/jsapi">
+<script type="text/javascript" src="//www.google.com/jsapi">
 </script>
 <script type="text/javascript">
 google.load("feeds", "1") //Load Google Ajax Feed API (version 1)
 </script>
 
-          <div id="feeddiv">
+          <div id="feeddiv" style="padding-bottom: 66px;">
 </div>
 </div>
 
@@ -18,7 +18,7 @@ google.load("feeds", "1") //Load Google Ajax Feed API (version 1)
 
 var feedcontainer=document.getElementById("feeddiv")
 var feedurl="http://www.finance.gov.au/taxonomy/term/1274/feed"
-var feedlimit=4
+var feedlimit=3
 var rssoutput="<div  class='module module-shallow module-narrow module-dark info box' style='color:black'><h2>Latest data.gov.au News</h2><i class='ckan-icon ckan-icon-feed'></i><a href='http://www.finance.gov.au/taxonomy/term/1274/feed/'>&nbsp;Subscribe to the blog </a></div>"
 
 
