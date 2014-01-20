@@ -1,0 +1,69 @@
+
+<div class="hero-secondary-inner">
+<script type="text/javascript" src="http://www.google.com/jsapi">
+</script>
+<script type="text/javascript">
+google.load("feeds", "1") //Load Google Ajax Feed API (version 1)
+</script>
+
+          <div id="feeddiv">
+</div>
+</div>
+
+
+
+<script type="text/javascript">
+
+var feedcontainer=document.getElementById("feeddiv")
+var feedurl="http://www.finance.gov.au/taxonomy/term/1274/feed"
+var feedlimit=4
+var rssoutput="<div  class='module module-shallow module-narrow module-dark info box' style='color:black'><h2>Latest data.gov.au News</h2><i class='ckan-icon ckan-icon-feed'></i><a href='http://www.finance.gov.au/taxonomy/term/1274/feed/'>&nbsp;Subscribe to the blog </a></div>"
+
+
+function rssfeedsetup(){
+var feedpointer=new google.feeds.Feed(feedurl) //Google Feed API method
+feedpointer.setNumEntries(feedlimit) //Google Feed API method
+feedpointer.load(displayfeed) //Google Feed API method
+}
+
+function displayfeed(result){
+if (!result.error){
+var thefeeds=result.feed.entries
+for (var i=0; i<thefeeds.length; i++) {
+rssoutput+="<div  class='module module-shallow module-narrow module-dark info box'><h3><a href='" + thefeeds[i].link + "'>" + thefeeds[i].title + "</a></h3>"
+rssoutput+= " <font color='black'>Posted on " + new Date(thefeeds[i].publishedDate).toDateString() + "</font></div>"
+}
+rssoutput+=""
+feedcontainer.innerHTML=rssoutput
+}
+else
+alert("Error fetching feeds!")
+}
+
+window.onload=function(){
+rssfeedsetup()
+}
+
+</script>
+
+{% set tags = h.get_facet_items_dict('tags', limit=3) %}
+{% set placeholder = _('eg. Gold Prices') %}
+
+<div class="module module-search module-narrow module-shallow box">
+  <form class="module-content search-form" method="get" action="{% url_for controller='package', action='search' %}">
+    <h3 class="heading">{{ _("Search Your Data") }}</h3>
+    <div class="search-input control-group search-giant">
+      <input type="text" class="search" name="q" value="" autocomplete="off" placeholder="{{ placeholder }}" />
+      <button type="submit">
+        <i class="icon-search"></i>
+        <span>{{ _('Search') }}</span>
+      </button>
+    </div>
+  </form>
+  <div class="tags">
+    <h3>{{ _('Popular Tags') }}</h3>
+    {% for tag in tags %}
+      <a class="tag" href="{% url_for controller='package', action='search', tags=tag.name %}">{{ h.truncate(tag.display_name, 22) }}</a>
+    {% endfor %}
+  </div>
+</div>
