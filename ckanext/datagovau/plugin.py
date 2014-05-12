@@ -22,6 +22,9 @@ def get_user_datasets(user_dict):
 		filtered_dict[dataset['id']] = dataset
     return filtered_dict.values()
 
+def related_create(context, data_dict=None):
+    return {'success': False, 'msg': 'No one is allowed to create related items'}
+
 class DataGovAuPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
     '''An example IDatasetForm CKAN plugin.
@@ -31,6 +34,10 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     '''
     plugins.implements(plugins.IConfigurer, inherit=False)
     plugins.implements(plugins.ITemplateHelpers, inherit=False)
+    plugins.implements(plugins.IAuthFunctions)
+
+    def get_auth_functions(self):
+        return {'rekated_create': related_create}
 
     def update_config(self, config):
         # Add this plugin's templates dir to CKAN's extra_template_paths, so
