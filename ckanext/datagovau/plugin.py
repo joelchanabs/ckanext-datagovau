@@ -22,6 +22,10 @@ def get_user_datasets(user_dict):
 		filtered_dict[dataset['id']] = dataset
     return filtered_dict.values()
 
+def get_related_dataset(related_id):
+    result = model.Session.execute("select dataset_id from related_dataset where related_id =\'"+related_id+"\' limit 1;").first()[0]
+    return lib.helpers.get_action('package_show',{'id':result})
+
 def related_create(context, data_dict=None):
     return {'success': False, 'msg': 'No one is allowed to create related items'}
 
@@ -37,7 +41,7 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     plugins.implements(plugins.IAuthFunctions)
 
     def get_auth_functions(self):
-        return {'rekated_create': related_create}
+        return {'related_create': related_create}
 
     def update_config(self, config):
         # Add this plugin's templates dir to CKAN's extra_template_paths, so
@@ -51,5 +55,5 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
-        return {'get_user_datasets': get_user_datasets}
+        return {'get_user_datasets': get_user_datasets, 'get_related_dataset': get_related_dataset}
 
