@@ -5,14 +5,14 @@ import ckanapi
 import fileinput
 import csv
 
-def updateresource(id):
+def updateresource(resource_id):
     url = 'http://data.disclosurelo.gs'
     api_key = ''
     db_credentials = ''
-    print id
+    print resource_id
     ckan = ckanapi.RemoteCKAN('http://data.disclosurelo.gs')
     #ckan = ckanapi.RemoteCKAN('http://demo.ckan.org')
-    resource = ckan.action.resource_show(id=id)
+    resource = ckan.action.resource_show(id=resource_id)
     print resource
     url = resource['url'] 
     #last_modified= 'Mon, 24 Feb 2014 01:48:29 GMT'
@@ -34,12 +34,18 @@ def updateresource(id):
         if 'etag' in r.headers:
             resource['etag'] = r.headers['etag']
         #save updated resource
+#    result = ckan.action.resource_update(id,resource)
         if 'format' == 'shp':
-            print "geoingest!"
+            print "geoingest!" db_settings_json, api_url, api_key, resource['dataset_id']
         else:
             ckan.action.datapusher_submit(resource_id=id)
-#    result = ckan.action.resource_update(id,resource)
         
+if len(sys.argv) != 5:
+    print "spatial ingester. command line: postgis_url api_url api_key"
+    sys.exit(errno.EACCES)
+else:
+    (path, db_settings_json, api_url, api_key) = sys.argv
+    db_settings = json.loads(db_settings_json)
 
 for line in fileinput.input():
     row = csv.reader(line)
