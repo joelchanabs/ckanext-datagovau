@@ -24,7 +24,7 @@ def get_user_datasets(user_dict):
 
 def get_related_dataset(related_id):
     result = model.Session.execute("select dataset_id from related_dataset where related_id =\'"+related_id+"\' limit 1;").first()[0]
-    return lib.helpers.get_action('package_show',{'id':result})
+    return result
 
 def related_create(context, data_dict=None):
     return {'success': False, 'msg': 'No one is allowed to create related items'}

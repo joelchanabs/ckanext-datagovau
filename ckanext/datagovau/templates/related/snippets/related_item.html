@@ -22,8 +22,8 @@ Example:
 {{ h.render_markdown(related.description) }}
 </div>
   {% endif %}
-  {% if h.get_related_dataset(related.id) %}
-<small>Using dataset: {{ h.get_related_dataset(related.id).title  }}</small>
+  {% if h.check_access('package_show',{"id":h.get_related_dataset(related.id)}) %}
+<small>Using dataset: {{ h.get_action('package_show',{"id":h.get_related_dataset(related.id)}).title  }}</small>
   {% endif %}
 
   <a class="media-view" href="{{ related.url }}" target="_blank" title="{{ tooltip }}">
