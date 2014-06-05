@@ -21,7 +21,7 @@
 
   {% call form.input(field_url, label=url_label, id='field-image-url', placeholder=placeholder, value=data.get(field_url), error=errors.get(field_url), classes=['control-full']) %}
 <span id="autoupdate_form">
-      {% call form.select('autoupdate', label=_('Generate API from this Link'), options= [{'value': 'active', 'text': 'Active'}, {'value': 'inactive', 'text': 'Inactive'}], selected='Active', error=errors.autoupdate) %}
+      {% call form.select('autoupdate', label=_('Generate API from this Link'), options= [{'value': 'active', 'text': 'Active'}, {'value': 'inactive', 'text': 'Inactive'}], selected='Inactive', error=errors.autoupdate) %}
 <br/>
 Where a file is compatible with either CKAN or GeoServer we will attempt to make a functional end-point for this resource. The link provided above will also be checked for a new version based on the update frequency as set at the dataset level.
 </span>
