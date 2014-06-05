@@ -1,3 +1,16 @@
+#!/usr/bin/python
+# coding=utf-8
+'''
+auto update batch job for ckan
+<alex.sadleir@linkdigital.com.au>
+1.0  26/05/2014  initial implementation
+
+TODO
+- archive files in filestore
+- update frequency reduced based on dataset metadata
+- emails on HTTP errors
+'''
+
 import requests
 import ckanapi
 import csv
@@ -56,6 +69,8 @@ else:
     datastore_db_settings = dict(db_settings)
     datastore_db_settings['dbname'] = db_settings['datastore_dbname']
     datastore_db_settings_json = json.dumps(datastore_db_settings)
+
+#until https://github.com/ckan/ckan/pull/1732 is merged, use database directly
 
 try:
     conn = psycopg2.connect(dbname=db_settings['dbname'], user=db_settings['user'], password=db_settings['password'], host=db_settings['host'])
