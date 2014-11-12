@@ -10,6 +10,9 @@ from pylons import config
 from sqlalchemy import orm
 import ckan.model
 
+import ckanext.datagovau.action as action
+from ckan.lib.plugins import DefaultGroupForm
+from ckan.lib.plugins import DefaultOrganizationForm
 # get user created datasets and those they have edited
 def get_user_datasets(user_dict):
     created_datasets_list = user_dict['datasets']
@@ -39,6 +42,7 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     plugins.implements(plugins.IConfigurer, inherit=False)
     plugins.implements(plugins.ITemplateHelpers, inherit=False)
     plugins.implements(plugins.IAuthFunctions)
+    plugins.implements(plugins.IActions, inherit=True)
 
     def get_auth_functions(self):
         return {'related_create': related_create}
@@ -52,8 +56,37 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         tk.add_template_directory(config, 'templates')
         tk.add_public_directory(config, 'theme/public')
         tk.add_resource('theme/public', 'ckanext-datagovau')
+        tk.add_resource('public/scripts/vendor/jstree', 'jstree')
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
         return {'get_user_datasets': get_user_datasets, 'get_related_dataset': get_related_dataset}
 
+    # IActions
+
+    def get_actions(self):
+        return {'group_tree': action.group_tree,
+                'group_tree_section': action.group_tree_section,
+                }
+
+
+class HierarchyForm(plugins.SingletonPlugin, DefaultOrganizationForm):
+
+    plugins.implements(plugins.IGroupForm, inherit=True)
+
+    # IGroupForm
+
+    def group_types(self):
+        return ('organization',)
+
+    def setup_template_variables(self, context, data_dict):
+        from pylons import tmpl_context as c
+        model = context['model']
+        group_id = data_dict.get('id')
+        if group_id:
+            group = model.Group.get(group_id)
+            c.allowable_parent_groups = \
+                group.groups_allowed_to_be_its_parent(type='organization')
+        else:
+            c.allowable_parent_groups = model.Group.all(
+                group_type='organization')

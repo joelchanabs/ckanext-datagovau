@@ -22,5 +22,6 @@ setup(
 	"""
         [ckan.plugins]
 	datagovau=ckanext.datagovau.plugin:DataGovAuPlugin
+	datagovau_hierarchy=ckanext.datagovau.plugin:HierarchyForm
 	""",
 )
