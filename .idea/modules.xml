@@ -3,7 +3,11 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/ckanext-datagovau.iml" filepath="$PROJECT_DIR$/ckanext-datagovau.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../ckanext-googleanalytics/ckanext-googleanalytics.iml" filepath="$PROJECT_DIR$/../ckanext-googleanalytics/ckanext-googleanalytics.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../ckanext-hierarchy/ckanext-hierarchy.iml" filepath="$PROJECT_DIR$/../ckanext-hierarchy/ckanext-hierarchy.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../ckanext-spatial/ckanext-spatial.iml" filepath="$PROJECT_DIR$/../ckanext-spatial/ckanext-spatial.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../datapusher/datapusher.iml" filepath="$PROJECT_DIR$/../datapusher/datapusher.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../dga-spatialingestor/dga-spatialingestor.iml" filepath="$PROJECT_DIR$/../dga-spatialingestor/dga-spatialingestor.iml" />
     </modules>
   </component>
 </project>
-
