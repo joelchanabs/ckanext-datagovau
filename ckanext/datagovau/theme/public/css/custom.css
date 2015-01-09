@@ -1,5 +1,9 @@
 @media (min-width: 979px) {
   .media-item {
-    width: 400px;
+    width: 92%;
+
+  }
+  .media-item .media-image {
+    float: right;
   }
 }
