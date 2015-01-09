@@ -7,3 +7,50 @@
     float: right;
   }
 }
+
+i.icon-remove + span{
+  display: none;
+}
+
+.context-info .info .dl .dd {
+  margin-top: 3px;
+  margin-left: 0;
+}
+.context-info .nums .dl {
+  float: left;
+  width: 50%;
+  margin: 5px 0 0 0;
+  color: #444444;
+}
+.context-info .nums .dl .dt {
+  display: block;
+  font-size: 13px;
+  font-weight: 300;
+}
+.context-info .nums .dl .dd {
+  display: block;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 36px;
+  margin-left: 0;
+}
+.context-info .nums .dl .dd .smallest {
+  font-size: 13px;
+}
+.context-info .nums .dl .dd .smaller {
+  font-size: 16px;
+}
+.context-info .nums .dl .dd .small {
+  font-size: 21px;
+}
+
+p>a{
+  text-decoration: underline;
+}
+
+.module .pagination li span {
+  border-top: none;
+  border-bottom: none;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}

@@ -8,3 +8,8 @@
       {{ super() }}
       {% resource 'ckanext-datagovau/css/custom.css' %}
     {% endblock %}
+
+    {% block scripts %}
+    {{ super() }}
+    {% resource 'ckanext-datagovau/js/custom.js' %}
+    {% endblock %}
