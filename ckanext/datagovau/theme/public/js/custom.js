@@ -7,6 +7,7 @@ function windowOnLoad () {
   addTextToI();
   addTitleToSearch();
   fixPager();
+  insertRequiredNoteBeforeForm();
 }
 
 
@@ -35,7 +36,12 @@ function addTextToI () {
 function fixPager () {
   $('div.pagination li.disabled').text('<span>...</span>');
   var first = $('div.pagination a').first()
-  first.text(a.text().replace('«', 'Next page'))
+  try{
+    first.text(a.text().replace('«', 'Next page'))
+  }
+  catch(e){
+    return
+  }
   var last = $('div.pagination a').last()
   last.text(a.text().replace('»', 'Previous page'))
 }
@@ -50,5 +56,9 @@ function _updateAttribute (element, attr, value) {
 function _addReaderTextToButtons(selector, text){
   var self = $(selector);
   if ( self.next().is('span') ) return;
-  self.after($('<span>').text(text))
+  self.after($('<span>').addClass('visually-hidden').text(text))
+}
+
+function insertRequiredNoteBeforeForm () {
+  $('.control-group').first().before($('.control-required-message'));
 }
