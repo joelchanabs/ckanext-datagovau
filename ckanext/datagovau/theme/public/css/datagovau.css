@@ -121,9 +121,6 @@ li .truncator-more{
 li:hover .truncator-more{
     display:inline;
 }
-#details.collapse.in{
-    display: block;
-}
-#details.collapse{
-    display: none;
+#details:not(.in){
+    visibility: hidden;
 }

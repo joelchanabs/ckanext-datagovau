@@ -8,6 +8,7 @@ function windowOnLoad () {
   addTitleToSearch();
   fixPager();
   insertRequiredNoteBeforeForm();
+  textAfterDropdown();
 }
 
 
@@ -46,8 +47,17 @@ function fixPager () {
   last.text(a.text().replace('»', 'Previous page'))
 }
 
+function insertRequiredNoteBeforeForm () {
+  $('.control-group').first().before($('.control-required-message'));
+}
 
-// u'«', symbol_next=u'»',
+function textAfterDropdown () {
+  var icon = $('.resource-item .dropdown-toggle i');
+  icon.after($('<span>').addClass('visually-hidden').text(' show below'))
+  $('.resource-item .dropdown').on('click', _onDropClick)
+}
+
+
 
 function _updateAttribute (element, attr, value) {
   element.attr(attr, element.attr(attr) || value)
@@ -56,9 +66,14 @@ function _updateAttribute (element, attr, value) {
 function _addReaderTextToButtons(selector, text){
   var self = $(selector);
   if ( self.next().is('span') ) return;
-  self.after($('<span>').addClass('visually-hidden').text(text))
+  self.after($('<span>').addClass('visually-hidden').text(text));
 }
 
-function insertRequiredNoteBeforeForm () {
-  $('.control-group').first().before($('.control-required-message'));
+function _onDropClick (event) {
+  var self = $(this);
+  if (self.hasClass('open')){
+    $(event.target).find('.visually-hidden').text(' show below');
+  } else {
+    $(event.target).find('.visually-hidden').text(' hide below');
+  }
 }
