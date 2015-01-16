@@ -1,4 +1,8 @@
 {% ckan_extends %}
+{% block primary_content %}
+<a name="main_content" id="main_content" tabindex="-1"></a>
+        {{ super() }}
+        {%endblock%}
 {% block home_secondary_content %}
 <script type="text/javascript" src="//www.google.com/jsapi">
 </script>

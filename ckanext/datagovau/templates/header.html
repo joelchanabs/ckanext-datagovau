@@ -1,5 +1,8 @@
 {% ckan_extends %}
-
+{% block header_wrapper %}
+<a href="#main_content" class="visually-hidden">Skip to main content</a>
+        {{ super() }}
+        {% endblock %}
 {% block header_account_logged %}
 {% if c.userobj.sysadmin %}
 <li>
@@ -59,6 +62,7 @@
 
 
 {% block header_logo %}
+
 {% if g.site_logo %}
 <a class="logo" href="{{ h.url('home') }}"><img src="{{ h.url_for_static(g.site_logo)  }}" alt="Australian Government - data.gov.au Logo" title="{{ g.site_title }}" /></a>
 {% else %}
