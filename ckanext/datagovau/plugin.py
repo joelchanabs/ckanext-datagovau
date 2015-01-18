@@ -35,7 +35,7 @@ def related_create(context, data_dict=None):
 
 def get_ddg_site_statistics():
     stats = {}
-    result = model.Session.execute("select count(*) from package inner join (select distinct package_id from resource_group inner join resource on resource.resource_group_id = resource_group.id) as r on package.id = r.package_id where (package.state='active' or package.state='draft' or package.state='draft-complete') and private = 'f' and package.id not in (select package_id from package_extra where key = 'harvest_portal')").first()[0]
+    result = model.Session.execute("select count(*) from package where (package.state='active' or package.state='draft' or package.state='draft-complete') and private = 'f' and package.id not in (select package_id from package_extra where key = 'harvest_portal')").first()[0]
     stats['dataset_count'] = result
     stats['group_count'] = len(logic.get_action('group_list')({}, {}))
     stats['organization_count'] = len(
