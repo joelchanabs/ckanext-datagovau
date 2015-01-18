@@ -124,3 +124,61 @@ li:hover .truncator-more{
 #details:not(.in){
     visibility: hidden;
 }
+
+.account-masthead
+{
+    background		: #4C4C4E;
+}
+
+.masthead
+{
+    background		: #E8E8E8 url("/images/theme/BG_globalHeader.gif") repeat-x;
+}
+
+.masthead .content
+{
+    width			: 684px;
+}
+
+.masthead .site-search
+{
+    width			: 210px;
+}
+
+.masthead .navigation
+{
+    text-align		: right;
+    width			: 445px;
+}
+
+.masthead .navigation .nav-pills > li
+{
+    float			: none;
+    display 		: inline-block;
+}
+
+.masthead .navigation .nav-pills li a:hover,
+.masthead .navigation .nav-pills li.active a
+{
+    color			: white;
+}
+
+.masthead a
+{
+    color			: black;
+}
+
+.attribution .ckan-footer-logo
+{
+    overflow		: hidden;
+}
+.media-overlay
+{
+    display:none;
+}
+#feeddiv .module
+{
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 10px;
+}
