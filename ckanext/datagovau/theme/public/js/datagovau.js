@@ -43,7 +43,7 @@ function _updateAttribute (element, attr, value) {
 
 function _addReaderTextToButtons(selector, text){
   var self = $(selector);
-  $(selector).html('<img src="" alt="'+text+'"/>');
+  $(selector).html('<img src="" class="visually-hidden" alt="'+text+'"/>');
   if ( self.next().is('span') ) return;
   self.after($('<span>').addClass('visually-hidden').text(text));
 }
