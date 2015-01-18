@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/../ckanext-agls/ckanext-agls.iml" filepath="$PROJECT_DIR$/../ckanext-agls/ckanext-agls.iml" />
       <module fileurl="file://$PROJECT_DIR$/ckanext-datagovau.iml" filepath="$PROJECT_DIR$/ckanext-datagovau.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../ckanext-dga-stats/ckanext-dga-stats.iml" filepath="$PROJECT_DIR$/../ckanext-dga-stats/ckanext-dga-stats.iml" />
       <module fileurl="file://$PROJECT_DIR$/../ckanext-googleanalytics/ckanext-googleanalytics.iml" filepath="$PROJECT_DIR$/../ckanext-googleanalytics/ckanext-googleanalytics.iml" />
       <module fileurl="file://$PROJECT_DIR$/../ckanext-hierarchy/ckanext-hierarchy.iml" filepath="$PROJECT_DIR$/../ckanext-hierarchy/ckanext-hierarchy.iml" />
       <module fileurl="file://$PROJECT_DIR$/../ckanext-spatial/ckanext-spatial.iml" filepath="$PROJECT_DIR$/../ckanext-spatial/ckanext-spatial.iml" />

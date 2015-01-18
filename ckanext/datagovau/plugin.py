@@ -5,6 +5,7 @@ import ckan.lib as lib
 import ckan.lib.dictization.model_dictize as model_dictize
 import ckan.plugins.toolkit as tk
 import ckan.model as model
+import ckan.logic as logic
 from pylons import config
 
 from sqlalchemy import orm
@@ -31,6 +32,21 @@ def get_related_dataset(related_id):
 
 def related_create(context, data_dict=None):
     return {'success': False, 'msg': 'No one is allowed to create related items'}
+
+def get_ddg_site_statistics():
+    stats = {}
+    result = model.Session.execute("select count(*) from package inner join (select distinct package_id from resource_group inner join resource on resource.resource_group_id = resource_group.id) as r on package.id = r.package_id where (package.state='active' or package.state='draft' or package.state='draft-complete') and private = 'f' and package.id not in (select package_id from package_extra where key = 'harvest_portal')").first()[0]
+    stats['dataset_count'] = result
+    stats['group_count'] = len(logic.get_action('group_list')({}, {}))
+    stats['organization_count'] = len(
+        logic.get_action('organization_list')({}, {}))
+    result = model.Session.execute(
+        '''select count(*) from related r
+           left join related_dataset rd on r.id = rd.related_id
+           where rd.status = 'active' or rd.id is null''').first()[0]
+    stats['related_count'] = result
+
+    return stats
 
 class DataGovAuPlugin(plugins.SingletonPlugin,
                                 tk.DefaultDatasetForm):
@@ -60,7 +76,8 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
-        return {'get_user_datasets': get_user_datasets, 'get_related_dataset': get_related_dataset}
+        return {'get_user_datasets': get_user_datasets, 'get_related_dataset': get_related_dataset, 'get_ddg_site_statistics': get_ddg_site_statistics}
+
 
     # IActions
 
