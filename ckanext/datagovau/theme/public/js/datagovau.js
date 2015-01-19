@@ -6,6 +6,8 @@ function windowOnLoad () {
   addTitleToSearch();
   insertRequiredNoteBeforeForm();
   textAfterDropdown();
+  correctNums();
+  navigationInH3();
 }
 
 function addAltToAvatar () {
@@ -37,6 +39,19 @@ function textAfterDropdown () {
   $('.resource-item .dropdown').on('click', _onDropClick)
 }
 
+function correctNums() {
+  _repTag('dl','p');
+  _repTag('dt','span');
+  _repTag('dd','span');
+}
+
+function navigationInH3() {
+  $('.nav-tabs>li>a').each(function() {
+    $(this).html( $('<h3 class="nav-styled">').html( $(this).html() ) )
+  })
+}
+
+
 function _updateAttribute (element, attr, value) {
   element.attr(attr, element.attr(attr) || value)
 }
@@ -55,4 +70,10 @@ function _onDropClick (event) {
   } else {
     $(event.target).find('.visually-hidden').text(' hide below');
   }
+}
+
+function _repTag(old, updated) {
+  $(old).each(function () {
+    $(this).replaceWith( $('<'+updated+'>').html( $(this).html() ).addClass(old) )
+  });
 }
