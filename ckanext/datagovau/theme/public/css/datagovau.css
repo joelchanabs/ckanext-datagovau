@@ -9,6 +9,7 @@
 }
 .media-item .media-image {
     max-height: 125px;
+    max-width: 312px;
 }
 .context-info .info .dl .dd {
   margin-top: 3px;
@@ -75,11 +76,11 @@ body:hover .visually-hidden a, body:hover .visually-hidden input, body:hover .vi
 }
 .label[data-format=json],
 .label[data-format*=json] {
-  background-color: #bf4d00;
+  background-color: #960000;
 }
 .label[data-format=xml],
 .label[data-format*=xml] {
-  background-color: #bf4d00;
+  background-color: #304d0f;
 }
 .label[data-format=text],
 .label[data-format*=text] {
