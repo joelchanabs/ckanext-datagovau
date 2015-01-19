@@ -8,7 +8,9 @@ max-height: 125px;
     float: right;
   }
 }
-
+.media-item .media-image {
+    max-height: 125px;
+}
 .context-info .info .dl .dd {
   margin-top: 3px;
   margin-left: 0;

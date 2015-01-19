@@ -14,7 +14,7 @@ Example:
 'application': h.url_for_static('/base/images/placeholder-application.png')
 } %}
 {% set tooltip = _('Go to {related_item_type}').format(related_item_type=related.type|replace('_', ' ')|title) %}
-<li class="related-item media-item" data-module="related-item">
+<li class="related-item media-item">
   <img src="{{ related.image_url or placeholder_map[related.type] or h.url_for_static('/base/images/placeholder-image.png') }}" alt="" class="media-image">
   <h3 class="media-heading">{{ related.title }}</h3>
   {% if related.description %}
@@ -22,9 +22,9 @@ Example:
 {{ h.render_markdown(related.description) }}
 </div>
   {% endif %}
-  {% if h.check_access('package_show',{"id":h.get_related_dataset(related.id)}) %}
-<small>Using dataset: {{ h.get_action('package_show',{"id":h.get_related_dataset(related.id)}).title  }}</small>
-  {% endif %}
+
+<small>Using dataset: {{ h.get_related_dataset(related.id) }}</small>
+
 
   <a class="media-view" href="{{ related.url }}" target="_blank" title="{{ tooltip }}">
     <span>{{ tooltip }}</span>
