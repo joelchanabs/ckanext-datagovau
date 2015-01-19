@@ -17,27 +17,33 @@ from ckan.lib.plugins import DefaultOrganizationForm
 # get user created datasets and those they have edited
 def get_user_datasets(user_dict):
     created_datasets_list = user_dict['datasets']
-    active_datasets_list = [x['data']['package'] for x in 
-				lib.helpers.get_action('user_activity_list',{'id':user_dict['id']}) if x['data'].get('package')]
+    active_datasets_list = [x['data']['package'] for x in
+                            lib.helpers.get_action('user_activity_list', {'id': user_dict['id']}) if
+                            x['data'].get('package')]
     raw_list = created_datasets_list + active_datasets_list
     filtered_dict = {}
     for dataset in raw_list:
-	if dataset['id'] not in filtered_dict.keys():
-		filtered_dict[dataset['id']] = dataset
+        if dataset['id'] not in filtered_dict.keys():
+            filtered_dict[dataset['id']] = dataset
     return filtered_dict.values()
 
+
 def get_related_dataset(related_id):
-    result = model.Session.execute("select dataset_id from related_dataset where related_id =\'"+related_id+"\' limit 1;").first()[0]
+    result = model.Session.execute(
+        "select title from related_dataset inner join package on package.id = related_dataset.dataset_id where related_id =\'" + related_id + "\' limit 1;").first()[0]
     return result
+
 
 def related_create(context, data_dict=None):
     return {'success': False, 'msg': 'No one is allowed to create related items'}
+
 
 def get_ddg_site_statistics():
     stats = {}
     result = model.Session.execute("select count(*) from package where package.state='active' "
                                    "and package.type ='dataset' and package.private = 'f' "
-                                   "and package.id not in (select package_id from package_extra where key = 'harvest_portal')").first()[0]
+                                   "and package.id not in (select package_id from package_extra where key = 'harvest_portal')").first()[
+        0]
     stats['dataset_count'] = result
     stats['group_count'] = len(logic.get_action('group_list')({}, {}))
     stats['organization_count'] = len(
@@ -50,8 +56,9 @@ def get_ddg_site_statistics():
 
     return stats
 
+
 class DataGovAuPlugin(plugins.SingletonPlugin,
-                                tk.DefaultDatasetForm):
+                      tk.DefaultDatasetForm):
     '''An example IDatasetForm CKAN plugin.
 
     Uses a tag vocabulary to add a custom metadata field to datasets.
@@ -78,7 +85,8 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
-        return {'get_user_datasets': get_user_datasets, 'get_related_dataset': get_related_dataset, 'get_ddg_site_statistics': get_ddg_site_statistics}
+        return {'get_user_datasets': get_user_datasets, 'get_related_dataset': get_related_dataset,
+                'get_ddg_site_statistics': get_ddg_site_statistics}
 
 
     # IActions
@@ -86,11 +94,10 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     def get_actions(self):
         return {'group_tree': action.group_tree,
                 'group_tree_section': action.group_tree_section,
-                }
+        }
 
 
 class HierarchyForm(plugins.SingletonPlugin, DefaultOrganizationForm):
-
     plugins.implements(plugins.IGroupForm, inherit=True)
 
     # IGroupForm
@@ -100,6 +107,7 @@ class HierarchyForm(plugins.SingletonPlugin, DefaultOrganizationForm):
 
     def setup_template_variables(self, context, data_dict):
         from pylons import tmpl_context as c
+
         model = context['model']
         group_id = data_dict.get('id')
         if group_id:
