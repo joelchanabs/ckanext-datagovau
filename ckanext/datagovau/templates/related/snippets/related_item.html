@@ -15,7 +15,9 @@ Example:
 } %}
 {% set tooltip = _('Go to {related_item_type}').format(related_item_type=related.type|replace('_', ' ')|title) %}
 <li class="related-item media-item">
-  <img src="{{ related.image_url or placeholder_map[related.type] or h.url_for_static('/base/images/placeholder-image.png') }}" alt="" class="media-image">
+  {% if related.image_url %}
+  <img src="{{ related.image_url or placeholder_map[related.type] }}" alt="" class="media-image">
+  {% endif %}
   <h3 class="media-heading">{{ related.title }}</h3>
   {% if related.description %}
     <div class="prose">
