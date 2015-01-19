@@ -4,6 +4,7 @@
 
   }
   .media-item .media-image {
+max-height: 125px;
     float: right;
   }
 }
