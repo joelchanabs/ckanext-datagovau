@@ -1,0 +1,13 @@
+diff --git a/ckan/controllers/group.py b/ckan/controllers/group.py
+index b89642b..18b3eef 100644
+--- a/ckan/controllers/group.py
++++ b/ckan/controllers/group.py
+@@ -162,7 +162,7 @@ class GroupController(base.BaseController):
+             collection=results,
+             page=request.params.get('page', 1),
+             url=h.pager_url,
+-            items_per_page=21
++            items_per_page=20
+         )
+         return render(self._index_template(group_type))
+
