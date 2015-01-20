@@ -1,5 +1,5 @@
 {% ckan_extends %}
-
+{% block page_primary_action %}<a name="main_content" id="main_content" tabindex="-1"></a>{{ super() }}{% endblock %}
 {% block primary_content_inner %}
   <h2 class="page-heading">{{ _('My Datasets') }}</h2>
   {% if h.get_user_datasets(c.user_dict) %}
