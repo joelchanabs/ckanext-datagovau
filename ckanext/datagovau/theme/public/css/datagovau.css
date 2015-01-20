@@ -1,12 +1,18 @@
 @media (min-width: 979px) {
-  .media-item {
-    width: 92%;
-
-  }
-  .media-item .media-image {
-max-height: 125px;
-    float: right;
-  }
+    .media-item {
+        width: 92%;
+    }
+    .organisation .media-item {
+        width: 43%;
+        text-align: center;
+        min-height: 200px;
+    }
+    .media-item .media-image {
+        float: right;
+    }
+    .organisation .media-item .media-image {
+        float: none;
+    }
 }
 .media-item .media-image {
     max-height: 125px;

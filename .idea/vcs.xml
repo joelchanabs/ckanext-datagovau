@@ -3,8 +3,8 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../ckanext-agls" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../ckanext-dga-ga-report" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../ckanext-dga-stats" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../ckanext-dga-stats/ckanext-dga-ga-report" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../ckanext-googleanalytics" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../ckanext-hierarchy" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../ckanext-spatial" vcs="Git" />
