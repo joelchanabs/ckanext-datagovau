@@ -5,7 +5,7 @@
     .organisation .media-item {
         width: 43%;
         text-align: center;
-        min-height: 200px;
+        min-height: 260px;
     }
     .media-item .media-image {
         float: right;
@@ -13,6 +13,10 @@
     .organisation .media-item .media-image {
         float: none;
     }
+}
+h3.nav-styled {
+font-size: 14px;
+font-weight: normal;
 }
 .media-item .media-image {
     max-height: 125px;

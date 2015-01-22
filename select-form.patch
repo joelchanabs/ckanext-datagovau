@@ -1,0 +1,22 @@
+diff --git a/ckan/public/base/javascript/modules/select-switch.js b/ckan/public/base/javascript/modules/select-switch.js
+index 145b33a..1ba629e 100644
+--- a/ckan/public/base/javascript/modules/select-switch.js
++++ b/ckan/public/base/javascript/modules/select-switch.js
+@@ -15,17 +15,3 @@
+  *
+  * Returns .
+  */
+-this.ckan.module('select-switch', {
+-
+-  options: {
+-    target: 'select'
+-  },
+-
+-  initialize: function () {
+-    var _this = this;
+-
+-    this.el.on('change', this.options.target, function () {
+-      _this.el.submit();
+-    });
+-  }
+-});
