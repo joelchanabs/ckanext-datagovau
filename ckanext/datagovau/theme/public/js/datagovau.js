@@ -1,15 +1,4 @@
 
-function windowOnLoad () {
-  addAltToAvatar();
-  addTextToI();
-  addTitleToSearch();
-  insertRequiredNoteBeforeForm();
-  textAfterDropdown();
-  correctNums();
-  navigationInH3();
-  viewErrorHide();
-}
-
 function viewErrorHide() {
   $('.data-viewer-error [data-toggle="collapse"]').attr('data-toggle','').on('click', function(e){
     $('#data-view-error').toggleClass('collapse');
@@ -92,4 +81,49 @@ function _repTag(old, updated) {
   });
 }
 
-window.onload = windowOnLoad()
+    function gazSearch(gazURL) {
+        var re = new RegExp("submit1=(.*\\d)(&|$)");
+        var m = re.exec(gazURL);
+        if (m != null) {
+            gazID = m[1];
+            $.getJSON("/api/2/util/gazetteer/latlon?q=" + gazID, function (data) {
+                if (data.geojson != undefined) {
+                    $('#spatial').val(data.geojson);
+                }
+            })
+        } else {
+            var re2 = new RegExp("[a-zA-Z].*\\d");
+            var m2 = re2.exec(gazURL);
+            if (m2 != null) {
+                gazID = m2[0];
+                $.getJSON("/api/2/util/gazetteer/latlon?q=" + gazID, function (data) {
+                    if (data.geojson != undefined) {
+                        $('#spatial').val(data.geojson);
+                    }
+                })
+            }
+        }
+    }
+    window.onload = function () {
+            $("#field-spatial_coverage").change(function (e) {
+                gazURL = e.target.value;
+                gazSearch(gazURL);
+            });
+            gazSearch($("#field-spatial_coverage").val());
+            $(function() {
+                $( "#field-temporal_coverage-from" ).datepicker();
+                $( "#field-temporal_coverage-to" ).datepicker();
+            });
+
+        };
+	rssfeedsetup();
+  addAltToAvatar();
+  addTextToI();
+  addTitleToSearch();
+  insertRequiredNoteBeforeForm();
+  textAfterDropdown();
+  correctNums();
+  navigationInH3();
+  viewErrorHide();
+}
+
