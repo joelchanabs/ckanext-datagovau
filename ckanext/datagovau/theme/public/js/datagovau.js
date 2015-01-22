@@ -1,4 +1,3 @@
-window.onload = windowOnLoad()
 
 function windowOnLoad () {
   addAltToAvatar();
@@ -8,6 +7,13 @@ function windowOnLoad () {
   textAfterDropdown();
   correctNums();
   navigationInH3();
+  viewErrorHide();
+}
+
+function viewErrorHide() {
+  $('.data-viewer-error [data-toggle="collapse"]').attr('data-toggle','').on('click', function(e){
+    $('#data-view-error').toggleClass('collapse');
+  })
 }
 
 function addAltToAvatar () {
@@ -47,7 +53,12 @@ function correctNums() {
 
 function navigationInH3() {
   $('.nav-tabs>li>a').each(function() {
-    $(this).html( $('<h3 class="nav-styled">').html( $(this).html() ) )
+    if (this.innerText && this.innerHTML){
+      this.innerHTML = '<h3 class="nav-styled">' + this.innerText + '</h3>'
+    } 
+    else{
+      $(this).html( $('<h3 class="nav-styled">').html( $(this).html() ) )
+    }
   })
 }
 
@@ -65,10 +76,13 @@ function _addReaderTextToButtons(selector, text){
 
 function _onDropClick (event) {
   var self = $(this);
+  var target = $(event.target).find('.visually-hidden');
   if (self.hasClass('open')){
-    $(event.target).find('.visually-hidden').text(' show below');
+    if (target.innerText) target.innerText = ' show below'
+    else target.text(' show below');
   } else {
-    $(event.target).find('.visually-hidden').text(' hide below');
+    if (target.innerText) target.innerText = ' hide below'
+    else target.text(' hide below');
   }
 }
 
@@ -77,3 +91,5 @@ function _repTag(old, updated) {
     $(this).replaceWith( $('<'+updated+'>').html( $(this).html() ).addClass(old) )
   });
 }
+
+window.onload = windowOnLoad()

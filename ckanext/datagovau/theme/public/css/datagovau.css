@@ -107,17 +107,9 @@ li:hover .truncator-more {
 #details:not(.in) {
     visibility: hidden;
 }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
 .account-masthead
 {
-    background		: #4C4C4E;
-=======
-.account-masthead {
     background: #4C4C4E;
->>>>>>> 785a835e598252e51839e3cd9a76b04e42081aa4
 }
 .masthead {
     background: #E8E8E8 url("/images/theme/BG_globalHeader.gif") repeat-x;
@@ -153,12 +145,11 @@ li:hover .truncator-more {
     padding-right: 20px;
     padding-bottom: 10px;
 }
-<<<<<<< HEAD
->>>>>>> 88b037a83c8088a08962dc516abe259ca47a2ab6
-=======
 h3.nav-styled {
     display: inline;
     font-weight: normal;
     font-size: 1em;
 }
->>>>>>> 785a835e598252e51839e3cd9a76b04e42081aa4
+#data-view-error.collapse{
+    display: none;
+}
