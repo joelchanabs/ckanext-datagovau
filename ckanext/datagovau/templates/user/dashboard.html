@@ -2,4 +2,11 @@
 
 {% block maintag %}<div role="main">{% endblock %}
 
-    {% block page_primary_action %}<a name="main_content" id="main_content" tabindex="-1"></a>{{ super() }}{% endblock %}
+{% block page_primary_action %}<a name="main_content" id="main_content" tabindex="-1"></a>{{ super() }}{% endblock %}
+
+{% block breadcrumb_content %}
+  <li><a href="{{ h.url_for(controller='user', action='dashboard') }}">{{ _('Dashboard') }}</a></li>
+  {% block custom_breadcrumb_content %}
+    <li class="active"><a href="{{ h.url_for(controller='user', action='dashboard') }}">{{ _('News feed') }}</a></li>
+  {% endblock %}
+{% endblock %}
