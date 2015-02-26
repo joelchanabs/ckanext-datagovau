@@ -4,7 +4,7 @@ from string import Template
 
 update = True
 
-destination = ckanapi.RemoteCKAN("","")
+destination = ckanapi.RemoteCKAN()
 extent_template = Template('''
     {"type": "Polygon", "coordinates": [[[$xmin, $ymin], [$xmax, $ymin], [$xmax, $ymax], [$xmin, $ymax], [$xmin, $ymin]]]}
     ''')
