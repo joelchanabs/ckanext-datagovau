@@ -107,12 +107,8 @@ li:hover .truncator-more {
 #details:not(.in) {
     visibility: hidden;
 }
-<<<<<<< HEAD
 .account-masthead
 {
-=======
-.account-masthead {
->>>>>>> 0bdbad9d395d3b693c01aa1d3125ef507089ac56
     background: #4C4C4E;
 }
 .masthead {
@@ -154,7 +150,6 @@ h3.nav-styled {
     font-weight: normal;
     font-size: 1em;
 }
-<<<<<<< HEAD
 #data-view-error.collapse{
     display: none;
 }
@@ -173,5 +168,3 @@ a.skip-link:focus {
     outline: 0;
     transition: background .5s, color .5s;
 }
-=======
->>>>>>> 0bdbad9d395d3b693c01aa1d3125ef507089ac56
