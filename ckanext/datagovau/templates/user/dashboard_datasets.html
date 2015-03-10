@@ -13,3 +13,8 @@
     </p>
   {% endif %}
 {% endblock %}
+
+
+{% block custom_breadcrumb_content %}
+  <li class="active"><a href="{{ h.url_for('user_dashboard_datasets') }}">{{  _('My Datasets') }}</a></li>
+{% endblock %}

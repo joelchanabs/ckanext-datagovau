@@ -1,13 +1,8 @@
-window.onload = windowOnLoad()
 
-function windowOnLoad () {
-  addAltToAvatar();
-  addTextToI();
-  addTitleToSearch();
-  insertRequiredNoteBeforeForm();
-  textAfterDropdown();
-  correctNums();
-  navigationInH3();
+function viewErrorHide() {
+  $('.data-viewer-error [data-toggle="collapse"]').attr('data-toggle','').on('click', function(e){
+    $('#data-view-error').toggleClass('collapse');
+  })
 }
 
 function addAltToAvatar () {
@@ -46,8 +41,13 @@ function correctNums() {
 }
 
 function navigationInH3() {
-  $('.nav-tabs>li>a').each(function() {
-    $(this).html( $('<h3 class="nav-styled">').html( $(this).html() ) )
+  $('.nav-tabs>li>a, .breadcrumb li a').each(function() {
+    if (this.innerText && this.innerHTML){
+      this.innerHTML = '<h3 class="nav-styled">' + this.innerHTML + '</h3>'
+    } 
+    else{
+      $(this).html( $('<h3 class="nav-styled">').html( $(this).html() ) )
+    }
   })
 }
 
@@ -65,10 +65,13 @@ function _addReaderTextToButtons(selector, text){
 
 function _onDropClick (event) {
   var self = $(this);
+  var target = $(event.target).find('.visually-hidden');
   if (self.hasClass('open')){
-    $(event.target).find('.visually-hidden').text(' show below');
+    if (target.innerText) target.innerText = ' show below';
+    else target.text(' show below');
   } else {
-    $(event.target).find('.visually-hidden').text(' hide below');
+    if (target.innerText) target.innerText = ' hide below';
+    else target.text(' hide below');
   }
 }
 
@@ -77,3 +80,50 @@ function _repTag(old, updated) {
     $(this).replaceWith( $('<'+updated+'>').html( $(this).html() ).addClass(old) )
   });
 }
+
+function gazSearch(gazURL) {
+  var re = new RegExp("submit1=(.*\\d)(&|$)");
+  var m = re.exec(gazURL);
+  if (m != null) {
+    gazID = m[1];
+    $.getJSON("/api/2/util/gazetteer/latlon?q=" + gazID, function (data) {
+      if (data.geojson != undefined) {
+        $('#spatial').val(data.geojson);
+      }
+    })
+  } else {
+    var re2 = new RegExp("[a-zA-Z].*\\d");
+    var m2 = re2.exec(gazURL);
+    if (m2 != null) {
+      gazID = m2[0];
+      $.getJSON("/api/2/util/gazetteer/latlon?q=" + gazID, function (data) {
+        if (data.geojson != undefined) {
+          $('#spatial').val(data.geojson);
+        }
+      })
+    }
+  }
+}
+
+window.onload = function () {
+  addAltToAvatar();
+  addTextToI();
+  addTitleToSearch();
+  insertRequiredNoteBeforeForm();
+  textAfterDropdown();
+  correctNums();
+  navigationInH3();
+  viewErrorHide();
+
+  rssfeedsetup();
+  $("#field-spatial_coverage").change(function (e) {
+      gazURL = e.target.value;
+      gazSearch(gazURL);
+  });
+  gazSearch($("#field-spatial_coverage").val());
+  $(function() {
+      $( "#field-temporal_coverage-from" ).datepicker();
+      $( "#field-temporal_coverage-to" ).datepicker();
+  });
+}
+
