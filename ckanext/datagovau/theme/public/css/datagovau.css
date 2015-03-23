@@ -128,12 +128,20 @@ li:hover .truncator-more {
     float: none;
     display: inline-block;
 }
-.masthead .navigation .nav-pills li a:hover, .masthead .navigation .nav-pills li.active a {
-    color: white;
+
+.header-image {
+margin-left: -50px;
 }
-.masthead a {
-    color: black;
+[role=main] {
+    min-height:100px !important; 
 }
+.masthead .nav>li>a,  .masthead .nav>li>a:focus, .masthead .nav>li>a:active{
+color: black;
+}
+.masthead .nav>li>a:hover {
+color: white;
+}
+
 .attribution .ckan-footer-logo {
     overflow: hidden;
 }
