@@ -115,7 +115,7 @@ window.onload = function () {
   navigationInH3();
   viewErrorHide();
 
-  rssfeedsetup();
+
   $("#field-spatial_coverage").change(function (e) {
       gazURL = e.target.value;
       gazSearch(gazURL);
@@ -125,5 +125,8 @@ window.onload = function () {
       $( "#field-temporal_coverage-from" ).datepicker();
       $( "#field-temporal_coverage-to" ).datepicker();
   });
+    if (typeof rssfeedsetup !== undefined) {
+        rssfeedsetup();
+    }
 }
 
