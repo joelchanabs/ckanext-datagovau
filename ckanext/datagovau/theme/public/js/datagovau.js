@@ -124,6 +124,7 @@ window.onload = function () {
   $(function() {
       $( "#field-temporal_coverage-from" ).datepicker();
       $( "#field-temporal_coverage-to" ).datepicker();
+      $( "#field-last_modified" ).datepicker();
   });
     if (typeof rssfeedsetup !== undefined) {
         rssfeedsetup();
