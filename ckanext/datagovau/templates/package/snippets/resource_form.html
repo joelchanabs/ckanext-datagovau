@@ -43,13 +43,12 @@ Where a file is compatible with either CKAN or GeoServer we will attempt to make
   {% block metadata_fields %}
     {% call form.input('last_modified', label=_('Last Modified'), id='field-last_modified',
 placeholder=_('When the file uploaded was last modified'),
-value=data.last_modified or h.get_now(), error=errors.last_modified, classes=['control-full'], is_required='true') %}
+value=data.last_modified, error=errors.last_modified, classes=['control-full'], is_required='true') %}
         <br/>
-        What is the temporal coverage of your dataset? Please choose a single date or a from and to date.
-
+When was the file uploaded was last modified? If left blank, assumed to be the date of last modification of resource information on this site. 
     {% endcall %}
 
-{% if data.format == 'wms' or stage %}
+<span id="wms_layer" style="display:none;">
       {{ form.input('wms_layer', id='field-wms_layer', label=_('WMS Layer ID'), placeholder=_('eg. 1'), value=data.wms_layer, error=errors.wms_layer, classes=['control-full']) }}
-{% endif %}
+</span>
 {% endblock %}
