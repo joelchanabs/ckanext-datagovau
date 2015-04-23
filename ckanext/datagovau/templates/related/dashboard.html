@@ -77,7 +77,6 @@
       <div class="control-group">
         <label for="field-sort">{{ _('Sort by') }}</label>
         <select id="field-sort" name="sort">
-          <option value="">{{ _('Default') }}</option>
           {% for option in c.sort_options %}
             <option value="{{ option.value }}"{% if c.filters.sort == option.value %} selected="selected"{% endif %}>{{ option.text or option.value }}</option>
           {% endfor %}
