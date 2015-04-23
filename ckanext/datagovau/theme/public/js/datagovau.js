@@ -115,15 +115,33 @@ window.onload = function () {
   navigationInH3();
   viewErrorHide();
 
-  rssfeedsetup();
+
   $("#field-spatial_coverage").change(function (e) {
       gazURL = e.target.value;
       gazSearch(gazURL);
   });
+  $("#field-format").change(function (e) {
+      if( e.target.value.toLowerCase() == 'wms') {
+	$("#wms_layer").show();
+} else {
+	$("#wms_layer").hide();
+}
+  });
+
+if( $("#field-format").val().toLowerCase() == 'wms') {
+        $("#wms_layer").show();
+} else {
+        $("#wms_layer").hide();
+}
+
   gazSearch($("#field-spatial_coverage").val());
   $(function() {
       $( "#field-temporal_coverage-from" ).datepicker();
       $( "#field-temporal_coverage-to" ).datepicker();
+      $( "#field-last_modified" ).datepicker();
   });
+    if (typeof rssfeedsetup !== "undefined") {
+        rssfeedsetup();
+    }
 }
 
