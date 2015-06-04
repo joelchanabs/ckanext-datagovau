@@ -1,0 +1,431 @@
+diff --git a/ckan/config/environment.py b/ckan/config/environment.py
+index 1148726..7d19538 100644
+--- a/ckan/config/environment.py
++++ b/ckan/config/environment.py
+@@ -351,7 +351,7 @@ def update_config():
+         extras = {'client_encoding': 'utf8'}
+     else:
+         extras = {}
+-
++    from sqlalchemy.pool import NullPool
+     engine = sqlalchemy.engine_from_config(config, 'sqlalchemy.', **extras)
+ 
+     if not model.meta.engine:
+diff --git a/ckan/controllers/group.py b/ckan/controllers/group.py
+index 0f5bc28..af36717 100644
+--- a/ckan/controllers/group.py
++++ b/ckan/controllers/group.py
+@@ -162,7 +162,7 @@ class GroupController(base.BaseController):
+             collection=results,
+             page = self._get_page_number(request.params),
+             url=h.pager_url,
+-            items_per_page=21
++            items_per_page=20
+         )
+         return render(self._index_template(group_type))
+ 
+diff --git a/ckan/controllers/package.py b/ckan/controllers/package.py
+index f17c498..735e20b 100644
+--- a/ckan/controllers/package.py
++++ b/ckan/controllers/package.py
+@@ -168,7 +168,7 @@ class PackageController(base.BaseController):
+ 
+         c.remove_field = remove_field
+ 
+-        sort_by = request.params.get('sort', None)
++        sort_by = request.params.get('sort', 'extras_harvest_portal asc, score desc')
+         params_nosort = [(k, v) for k, v in params_nopage if k != 'sort']
+ 
+         def _sort_by(fields):
+@@ -190,7 +190,7 @@ class PackageController(base.BaseController):
+ 
+         c.sort_by = _sort_by
+         if sort_by is None:
+-            c.sort_by_fields = []
++            c.sort_by_fields = [('extra_harvest_portal', 'asc'),('score', 'desc'), ('metadata_modified', 'desc')]
+         else:
+             c.sort_by_fields = [field.split()[0]
+                                 for field in sort_by.split(',')]
+@@ -209,6 +209,8 @@ class PackageController(base.BaseController):
+             c.fields_grouped = {}
+             search_extras = {}
+             fq = ''
++            if q == '' and not sort_by:
++                sort_by = 'extras_harvest_portal asc, score desc, metadata_modified desc'
+             for (param, value) in request.params.items():
+                 if param not in ['q', 'page', 'sort'] \
+                         and len(value) and not param.startswith('_'):
+@@ -400,6 +402,9 @@ class PackageController(base.BaseController):
+ 
+         # used by disqus plugin
+         c.current_package_id = c.pkg.id
++        if h.get_pkg_dict_extra(c.pkg_dict,'harvest_portal'):
++            log.info(h.get_pkg_dict_extra(c.pkg_dict,'harvest_portal'))
++            redirect(h.get_pkg_dict_extra(c.pkg_dict,'harvest_url').encode('ascii','ignore'), 301)
+         c.related_count = c.pkg.related_count
+ 
+         # can the resources be previewed?
+diff --git a/ckan/lib/dictization/model_dictize.py b/ckan/lib/dictization/model_dictize.py
+index 9af2474..904ff1d 100644
+--- a/ckan/lib/dictization/model_dictize.py
++++ b/ckan/lib/dictization/model_dictize.py
+@@ -59,7 +59,6 @@ def group_list_dictize(obj_list, context,
+     return sorted(group_list, key=sort_key, reverse=reverse)
+ 
+ def resource_list_dictize(res_list, context):
+-
+     active = context.get('active', True)
+     result_list = []
+     for res in res_list:
+@@ -409,7 +408,7 @@ def group_dictize(group, context,
+                 try:
+                     packages_limit = context['limits']['packages']
+                 except KeyError:
+-                    q['rows'] = 1000  # Only the first 1000 datasets are returned
++                    q['rows'] = 10  # Only the first 10 datasets are returned
+                 else:
+                     q['rows'] = packages_limit
+ 
+diff --git a/ckan/lib/helpers.py b/ckan/lib/helpers.py
+index 2520566..3711ed9 100644
+--- a/ckan/lib/helpers.py
++++ b/ckan/lib/helpers.py
+@@ -894,7 +894,7 @@ class Page(paginate.Page):
+     def pager(self, *args, **kwargs):
+         kwargs.update(
+             format=u"<div class='pagination pagination-centered'><ul>$link_previous ~2~ $link_next</ul></div>",
+-            symbol_previous=u'«', symbol_next=u'»',
++            symbol_previous=u'Previous Page', symbol_next=u'Next Page',
+             curpage_attr={'class': 'active'}, link_attr={}
+         )
+         return super(Page, self).pager(*args, **kwargs)
+@@ -914,8 +914,8 @@ class Page(paginate.Page):
+         html = super(Page, self)._range(regexp_match)
+         # Convert ..
+         dotdot = '<span class="pager_dotdot">..</span>'
+-        dotdot_link = HTML.li(HTML.a('...', href='#'), class_='disabled')
+-        html = re.sub(dotdot, dotdot_link, html)
++
++        html = re.sub(dotdot, '', html)
+ 
+         # Convert current page
+         text = '%s' % self.page
+diff --git a/ckan/lib/munge.py b/ckan/lib/munge.py
+index 1aec5b3..a6e900b 100644
+--- a/ckan/lib/munge.py
++++ b/ckan/lib/munge.py
+@@ -114,6 +114,12 @@ def munge_tag(tag):
+ def munge_filename(filename):
+     filename = substitute_ascii_equivalents(filename)
+     filename = filename.strip()
++    try:
++        import ntpath
++        #Internet Explorer provides full paths, not filenames so strip path
++        filename = ntpath.basename(filename)
++    except ImportError:
++        filename = filename
+     filename = re.sub(r'[^a-zA-Z0-9.\- ]', '', filename).replace(' ', '-')
+     filename = _munge_to_length(filename, 3, 100)
+     return filename
+diff --git a/ckan/logic/action/create.py b/ckan/logic/action/create.py
+index a1e685f..99244ca 100644
+--- a/ckan/logic/action/create.py
++++ b/ckan/logic/action/create.py
+@@ -3,7 +3,7 @@
+ import logging
+ import random
+ import re
+-
++import json
+ from pylons import config
+ import paste.deploy.converters
+ from sqlalchemy import func
+@@ -156,7 +156,7 @@ def package_create(context, data_dict):
+             try:
+                 check_data_dict(data_dict, schema)
+             except TypeError:
+-                # Old plugins do not support passing the schema so we need
++                # Old plugins do not support ssing the schema so we need
+                 # to ensure they still work
+                 package_plugin.check_data_dict(data_dict)
+ 
+@@ -302,7 +302,11 @@ def resource_create(context, data_dict):
+         _get_action('package_update')(context, pkg_dict)
+         context.pop('defer_commit')
+     except ValidationError, e:
+-        errors = e.error_dict['resources'][-1]
++        if 'resources' in e.error_dict:
++            errors = e.error_dict['resources'][-1]
++        else:
++            errors = ["Please ensure the metadata details of the dataset are completed and saved before trying to add files/resources " + str(e.error_dict)]
++
+         raise ValidationError(errors)
+ 
+     ## Get out resource_id resource from model as it will not appear in
+@@ -1112,6 +1116,7 @@ def _get_random_username_from_email(email):
+ def package_create_rest(context, data_dict):
+     _check_access('package_create_rest', context, data_dict)
+     dictized_package = model_save.package_api_to_dict(data_dict, context)
++    log.info(json.dumps(dictized_package))
+     dictized_after = _get_action('package_create')(context, dictized_package)
+     pkg = context['package']
+     package_dict = model_dictize.package_to_api(pkg, context)
+diff --git a/ckan/logic/action/get.py b/ckan/logic/action/get.py
+index ad59266..ffd290d 100644
+--- a/ckan/logic/action/get.py
++++ b/ckan/logic/action/get.py
+@@ -960,8 +960,9 @@ def package_show(context, data_dict):
+     # If the package_dict came from the Solr cache then each resource dict will
+     # already have a potentially outdated tracking_summary, this will overwrite
+     # it with a current one.
+-    for resource_dict in package_dict['resources']:
+-        _add_tracking_summary_to_resource_dict(resource_dict, model)
++    if len(package_dict['resources']) < 10:
++        for resource_dict in package_dict['resources']:
++            _add_tracking_summary_to_resource_dict(resource_dict, model)
+ 
+     if context.get('for_view'):
+         for item in plugins.PluginImplementations(plugins.IPackageController):
+diff --git a/ckan/logic/action/update.py b/ckan/logic/action/update.py
+index 9288f50..7d02027 100644
+--- a/ckan/logic/action/update.py
++++ b/ckan/logic/action/update.py
+@@ -155,7 +155,10 @@ def resource_update(context, data_dict):
+         updated_pkg_dict = _get_action('package_update')(context, pkg_dict)
+         context.pop('defer_commit')
+     except ValidationError, e:
+-        errors = e.error_dict['resources'][n]
++        if 'resources' in e.error_dict:
++            errors = e.error_dict['resources'][-1]
++        else:
++            errors = ["Please ensure the metadata details of the dataset are completed and saved before trying to add files/resources " + json.dumps(e.error_dict)]
+         raise ValidationError(errors)
+ 
+     upload.upload(id, uploader.get_max_resource_size())
+diff --git a/ckan/logic/auth/create.py b/ckan/logic/auth/create.py
+index 25ca975..545f3d6 100644
+--- a/ckan/logic/auth/create.py
++++ b/ckan/logic/auth/create.py
+@@ -48,17 +48,6 @@ def related_create(context, data_dict=None):
+ 
+     To create a featured item the user must be a sysadmin.
+     '''
+-    model = context['model']
+-    user = context['user']
+-    userobj = model.User.get( user )
+-
+-    if userobj:
+-        if data_dict.get('featured', 0) != 0:
+-            return {'success': False,
+-                    'msg': _('You must be a sysadmin to create a featured '
+-                             'related item')}
+-        return {'success': True}
+-
+     return {'success': False, 'msg': _('You must be logged in to add a related item')}
+ 
+ 
+diff --git a/ckan/logic/validators.py b/ckan/logic/validators.py
+index 178beef..d264824 100644
+--- a/ckan/logic/validators.py
++++ b/ckan/logic/validators.py
+@@ -592,8 +592,8 @@ def user_password_validator(key, data, errors, context):
+         errors[('password',)].append(_('Passwords must be strings'))
+     elif value == '':
+         pass
+-    elif len(value) < 4:
+-        errors[('password',)].append(_('Your password must be 4 characters or longer'))
++    elif len(value) < 12:
++        errors[('password',)].append(_('Your password must be 12 characters or longer'))
+ 
+ def user_passwords_match(key, data, errors, context):
+ 
+@@ -823,10 +823,9 @@ def filter_fields_and_values_exist_and_are_valid(key, data, errors, context):
+ 
+ 
+ def extra_key_not_in_root_schema(key, data, errors, context):
+-
+     for schema_key in context.get('schema_keys', []):
+         if schema_key == data[key]:
+-            raise Invalid(_('There is a schema field with the same name'))
++            raise Invalid(_('There is a schema field with the same name '+schema_key))
+ 
+ 
+ def empty_if_not_sysadmin(key, data, errors, context):
+diff --git a/ckan/migration/versions/074_remove_resource_groups.py b/ckan/migration/versions/074_remove_resource_groups.py
+index c0b26aa..5216cf8 100644
+--- a/ckan/migration/versions/074_remove_resource_groups.py
++++ b/ckan/migration/versions/074_remove_resource_groups.py
+@@ -20,8 +20,6 @@ def upgrade(migrate_engine):
+         WHERE R.resource_group_id = G.id;
+         ALTER TABLE "resource_revision" DROP COLUMN "resource_group_id";
+ 
+-        ALTER TABLE resource_group_revision
+-            DROP CONSTRAINT resource_group_revision_continuity_id_fkey;
+ 
+         DROP TABLE "resource_group_revision";
+         DROP TABLE "resource_group";
+diff --git a/ckan/public/base/javascript/modules/select-switch.js b/ckan/public/base/javascript/modules/select-switch.js
+index 145b33a..1ba629e 100644
+--- a/ckan/public/base/javascript/modules/select-switch.js
++++ b/ckan/public/base/javascript/modules/select-switch.js
+@@ -15,17 +15,3 @@
+  *
+  * Returns .
+  */
+-this.ckan.module('select-switch', {
+-
+-  options: {
+-    target: 'select'
+-  },
+-
+-  initialize: function () {
+-    var _this = this;
+-
+-    this.el.on('change', this.options.target, function () {
+-      _this.el.submit();
+-    });
+-  }
+-});
+diff --git a/ckan/public/robots.txt b/ckan/public/robots.txt
+index 279a33a..e410bdc 100644
+--- a/ckan/public/robots.txt
++++ b/ckan/public/robots.txt
+@@ -3,6 +3,50 @@ Disallow: /dataset/rate/
+ Disallow: /revision/
+ Disallow: /dataset/*/history
+ Disallow: /api/
++Disallow: /_tracking
++Disallow: /_tracking
++
++Disallow: /ar/
++Disallow: /bg/
++Disallow: /ca
++Disallow: /cs_CZ/
++Disallow: /da_DK/
++Disallow: /de/
++Disallow: /dv/
++Disallow: /el/
++Disallow: /en_AU/
++Disallow: /en_GB/
++Disallow: /es/
++Disallow: /es_AR/
++Disallow: /fa_IR/
++Disallow: /fi/
++Disallow: /fr/
++Disallow: /hu/
++Disallow: /id/
++Disallow: /is/
++Disallow: /it/
++Disallow: /ja/
++Disallow: /km/
++Disallow: /ko_KR/
++Disallow: /lt/
++Disallow: /lv/
++Disallow: /my_MM/
++Disallow: /nl/
++Disallow: /no/
++Disallow: /pl/
++Disallow: /pt_BR/
++Disallow: /ro/
++Disallow: /ru/
++Disallow: /sk/
++Disallow: /sl/
++Disallow: /sq/
++Disallow: /sr/
++Disallow: /sr_Latn/
++Disallow: /sv/
++Disallow: /tr/
++Disallow: /uk_UA/
++Disallow: /zh_CN/
++Disallow: /zh_TW/
+ 
+ User-Agent: *
+ Crawl-Delay: 10
+diff --git a/ckan/templates/package/snippets/resource_view.html b/ckan/templates/package/snippets/resource_view.html
+index 7f99a2a..bbb5683 100644
+--- a/ckan/templates/package/snippets/resource_view.html
++++ b/ckan/templates/package/snippets/resource_view.html
+@@ -1,14 +1,32 @@
+ {% import 'macros/form.html' as form %}
+ 
+ <div id="view-{{ resource_view['id'] }}" class="resource-view" data-id="{{ resource_view['id'] }}" data-title="{{ resource_view['title'] }}" data-description="{{ resource_view['descripion'] }}">
++<div class="actions">
++          
++          <ul>
++            
++            
++              <li>
+   <a class="btn pull-right"
+      href="#embed-{{ resource_view['id'] }}"
+      data-module="resource-view-embed"
+      data-module-id="{{ resource_view['id'] }}"
+      data-module-url="{{ h.url('resource_view', id=package['name'], resource_id=resource['id'], view_id=resource_view['id'], qualified=True) }}">
+     <i class="icon-code"></i>
+-    {{ _("Embed") }}
++    {{ _("Embed this View") }}
++  </a></li><li>
++  <a class="btn pull-right" target="_blank"
++     href="{{ h.url('resource_view', id=package['name'], resource_id=resource['id'], view_id=resource_view['id'], qualified=True) }}">
++    <i class="icon-external-link"></i>
++    {{ _("View Full Screen") }}
+   </a>
++              </li>
++            
++            
++            
++          </ul>
++          
++        </div>
+   <p class="desc">{{ resource_view['description'] }}</p>
+   <div class="m-top ckanext-datapreview">
+     {% if not to_preview and h.resource_view_is_filterable(resource_view) %}
+diff --git a/ckanext/reclineview/plugin.py b/ckanext/reclineview/plugin.py
+index 20e204b..0dee15d 100644
+--- a/ckanext/reclineview/plugin.py
++++ b/ckanext/reclineview/plugin.py
+@@ -178,7 +178,7 @@ class ReclineMapView(ReclineViewBase):
+ 
+     datastore_fields = []
+ 
+-    datastore_field_types = ['numeric']
++    datastore_field_types = ['text','numeric']
+ 
+     def list_map_field_types(self):
+         return [t['value'] for t in self.map_field_types]
+diff --git a/ckanext/reclineview/theme/public/vendor/recline/recline.js b/ckanext/reclineview/theme/public/vendor/recline/recline.js
+index 42be873..6c94b4e 100755
+--- a/ckanext/reclineview/theme/public/vendor/recline/recline.js
++++ b/ckanext/reclineview/theme/public/vendor/recline/recline.js
+@@ -2283,8 +2283,8 @@ my.Map = Backbone.View.extend({
+     var self = this;
+     this.map = new L.Map(this.$map.get(0));
+ 
+-    var mapUrl = "//otile{s}-s.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png";
+-    var osmAttribution = 'Map data &copy; 2011 OpenStreetMap contributors, Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="//developer.mapquest.com/content/osm/mq_logo.png">';
++    var mapUrl = "//c.tiles.mapbox.com/v3/maxious.gdb67hbh/{z}/{x}/{y}.png";
++    var osmAttribution = "Map data &copy; OpenStreetMap contributors, <a href='https://www.mapbox.com/about/maps/' target='_blank'>&copy; Mapbox</a> <a class='mapbox-improve-map' href='https://www.mapbox.com/map-feedback/' target='_blank'>Improve this map</a> ";
+     var bg = new L.TileLayer(mapUrl, {maxZoom: 18, attribution: osmAttribution ,subdomains: '1234'});
+     this.map.addLayer(bg);
+ 
+diff --git a/ckanext/resourceproxy/controller.py b/ckanext/resourceproxy/controller.py
+index 618d0a6..e4118d0 100644
+--- a/ckanext/resourceproxy/controller.py
++++ b/ckanext/resourceproxy/controller.py
+@@ -47,7 +47,7 @@ def proxy_resource(context, data_dict):
+ 
+         cl = r.headers.get('content-length')
+         if cl and int(cl) > MAX_FILE_SIZE:
+-            base.abort(409, '''Content is too large to be proxied. Allowed
++            base.abort(409, '''Sorry about that, but we cannot show files that are this big right now. Allowed
+                 file size: {allowed}, Content-Length: {actual}.'''.format(
+                 allowed=MAX_FILE_SIZE, actual=cl))
+ 
+@@ -64,7 +64,7 @@ def proxy_resource(context, data_dict):
+ 
+             if length >= MAX_FILE_SIZE:
+                 base.abort(409, headers={'content-encoding': ''},
+-                           detail='Content is too large to be proxied.')
++                           detail='Sorry about that, but we cannot show files that are this big right now. Please download instead.')
+ 
+     except requests.exceptions.HTTPError, error:
+         details = 'Could not proxy resource. Server responded with %s %s' % (
