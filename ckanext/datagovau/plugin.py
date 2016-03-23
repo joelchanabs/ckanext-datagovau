@@ -48,7 +48,6 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     '''
     plugins.implements(plugins.IConfigurer, inherit=False)
     plugins.implements(plugins.ITemplateHelpers, inherit=False)
-    plugins.implements(plugins.IAuthFunctions)
     plugins.implements(plugins.IActions, inherit=True)
 
     def update_config(self, config):
