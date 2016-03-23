@@ -27,17 +27,6 @@ def get_user_datasets(user_dict):
             filtered_dict[dataset['id']] = dataset
     return filtered_dict.values()
 
-
-def get_related_dataset(related_id):
-    result = model.Session.execute(
-        "select title from related_dataset inner join package on package.id = related_dataset.dataset_id where related_id =\'" + related_id + "\' limit 1;").first()[0]
-    return result
-
-
-def related_create(context, data_dict=None):
-    return {'success': False, 'msg': 'No one is allowed to create related items'}
-
-
 def get_ddg_site_statistics():
     stats = {}
     result = model.Session.execute("select count(*) from package where package.state='active' "
@@ -46,11 +35,6 @@ def get_ddg_site_statistics():
     stats['group_count'] = len(logic.get_action('group_list')({}, {}))
     stats['organization_count'] = len(
         logic.get_action('organization_list')({}, {}))
-    result = model.Session.execute(
-        '''select count(*) from related r
-           left join related_dataset rd on r.id = rd.related_id
-           where rd.status = 'active' or rd.id is null''').first()[0]
-    stats['related_count'] = result
 
     return stats
 
@@ -67,25 +51,18 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
     plugins.implements(plugins.IAuthFunctions)
     plugins.implements(plugins.IActions, inherit=True)
 
-    def get_auth_functions(self):
-        return {'related_create': related_create}
-
     def update_config(self, config):
         # Add this plugin's templates dir to CKAN's extra_template_paths, so
         # that CKAN will use this plugin's custom templates.
-        # here = os.path.dirname(__file__)
-        # rootdir = os.path.dirname(os.path.dirname(here))
 
         tk.add_template_directory(config, 'templates')
         tk.add_public_directory(config, 'theme/public')
         tk.add_resource('theme/public', 'ckanext-datagovau')
         tk.add_resource('public/scripts/vendor/jstree', 'jstree')
-        # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
-        return {'get_user_datasets': get_user_datasets, 'get_related_dataset': get_related_dataset,
+        return {'get_user_datasets': get_user_datasets,
                 'get_ddg_site_statistics': get_ddg_site_statistics}
-
 
     # IActions
 

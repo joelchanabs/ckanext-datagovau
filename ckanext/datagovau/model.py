@@ -12,8 +12,6 @@ class GroupTreeNode(dict):
         self.update(group_dict)
         self['highlighted'] = False
         self['children'] = []
-        # self._children_titles has a 1:1 relationship with values in
-        # self.['children'], and is used to help keep them sorted by title
         self._children_titles = []
 
     def add_child_node(self, child_node):
