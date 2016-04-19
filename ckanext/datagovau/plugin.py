@@ -1,18 +1,9 @@
-import logging
-
 import ckan.plugins as plugins
 import ckan.lib as lib
-import ckan.lib.dictization.model_dictize as model_dictize
 import ckan.plugins.toolkit as tk
-import ckan.model as model
 import ckan.logic as logic
-from pylons import config
-
-from sqlalchemy import orm
-import ckan.model
 
 import ckanext.datagovau.action as action
-from ckan.lib.plugins import DefaultGroupForm
 from ckan.lib.plugins import DefaultOrganizationForm
 # get user created datasets and those they have edited
 def get_user_datasets(user_dict):
@@ -28,13 +19,9 @@ def get_user_datasets(user_dict):
     return filtered_dict.values()
 
 def get_ddg_site_statistics():
-    stats = {}
-    result = model.Session.execute("select count(*) from package where package.state='active' "
-                                   "and package.type ='dataset' and package.private = 'f' ").first()[0]
-    stats['dataset_count'] = result
-    stats['group_count'] = len(logic.get_action('group_list')({}, {}))
-    stats['organization_count'] = len(
-        logic.get_action('organization_list')({}, {}))
+    stats = {'dataset_count': len(logic.get_action('package_list')({}, {})),
+             'group_count': len(logic.get_action('group_list')({}, {})),
+             'organization_count': len(logic.get_action('organization_list')({}, {}))}
 
     return stats
 
