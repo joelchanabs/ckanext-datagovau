@@ -110,7 +110,7 @@ li:hover .truncator-more {
     background: #4C4C4E;
 }
 .masthead {
-    background: #E8E8E8 url("/images/theme/BG_globalHeader.gif") repeat-x;
+    background: #E8E8E8 url("/base/images/bg.png") repeat-x;
 }
 .masthead .content {
     width: 684px;
