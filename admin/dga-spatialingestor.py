@@ -216,6 +216,8 @@ if len(shp_resources) > 0 and dataset['name'] != 'city-of-hobart':
             nativeCRS = "EPSG:3577"
         elif "WGS_1984_Web_Mercator_Auxiliary_Sphere" in prj_txt:
             nativeCRS = "EPSG:3857"
+        elif 'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984"' in prj_txt:
+            nativeCRS = "EPSG:4326"
         else:
             failure(dataset['title'] + " has unknown projection: " + prj_txt)
     else:
