@@ -128,7 +128,7 @@ window.onload = function () {
 }
   });
 
-if( $("#field-format").val().toLowerCase() !== 'undefined' && $("#field-format").val().toLowerCase() == 'wms') {
+if( $("#field-format").val().toLowerCase() !== undefined && $("#field-format").val().toLowerCase() == 'wms') {
         $("#wms_layer").show();
 } else {
         $("#wms_layer").hide();
