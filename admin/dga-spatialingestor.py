@@ -26,7 +26,7 @@ import psycopg2
 import requests
 from dateutil import parser
 import lxml.etree as et
-from osgeo import osr
+#from osgeo import osr
 
 geoserver_addr = "http://localhost:8080/geoserver/"
 geoserver_user = "admin"
@@ -192,9 +192,10 @@ if len(shp_resources) > 0 and dataset['name'] != 'city-of-hobart':
     print "converting to pgsql " + table_name + " " + shpfiles[0]
     if len(prjfiles) > 0:
         prj_txt = open(prjfiles[0], 'r').read()
-        sr = osr.SpatialReference()
-        sr.ImportFromESRI([prj_txt])
-        res = sr.AutoIdentifyEPSG()
+        #sr = osr.SpatialReference()
+        #sr.ImportFromESRI([prj_txt])
+        #res = sr.AutoIdentifyEPSG()
+        res = -1
         if res == 0:  # success
             nativeCRS = sr.GetAuthorityName(None) + ":" + sr.GetAuthorityCode(None)
         elif "GDA_1994_MGA_Zone_56" in prj_txt or "GDA94_MGA_zone_56" in prj_txt:
