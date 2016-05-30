@@ -254,39 +254,53 @@ try:
         else:
             (filepath, headers) = urllib.urlretrieve(kml_resources[0]['url'].replace('https', 'http'), "input.kml")
             kml_file = "input.kml"
-        print "changing kml folder name in " + kml_file
-        tree = et.parse(kml_file)
-        element = tree.xpath('//kml:Folder/kml:name', namespaces={'kml': "http://www.opengis.net/kml/2.2"})
-        if 0 in element:
-            element[0].text = table_name
-        else:
-            print 'no kml:Folder tag found'
-        find = et.ETXPath('//{http://www.opengis.net/kml/2.2}Folder/{http://www.opengis.net/kml/2.2}name')
-        element = find(tree)
-        if len(element):
-            for x in range(0, len(element)):
-                print element[x].text
-                element[x].text = table_name
-        else:
-            print 'no Folder tag found'
-        find = et.ETXPath('//{http://earth.google.com/kml/2.1}Folder/{http://earth.google.com/kml/2.1}name')
-        element = find(tree)
-        if len(element):
-            for x in range(0, len(element)):
-                print element[x].text
-                element[x].text = table_name
-        else:
-            print 'no Folder tag found'
-        with open(table_name + ".kml", "w") as ofile:
-            ofile.write(et.tostring(tree))
-        print "converting to pgsql " + table_name + ".kml"
-        pargs = ['ogr2ogr', '-f', 'PostgreSQL', "--config", "PG_USE_COPY", "YES",
-                 'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' + db_settings[
-                     'user'] + '\' password=\'' + db_settings['password'] + '\''
-            , table_name + ".kml", '-lco', 'GEOMETRY_NAME=geom', '-overwrite']
-        # pprint(pargs)
-        p = Popen(pargs)  # , stdout=PIPE, stderr=PIPE)
-        p.communicate()
+
+        try:
+            print "Trying raw KML conversion"
+            pargs = ['ogr2ogr', '-f', 'PostgreSQL', "--config", "PG_USE_COPY", "YES",
+                     'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' +
+                     db_settings[
+                         'user'] + '\' password=\'' + db_settings['password'] + '\''
+                , "input.kml", '-lco', 'GEOMETRY_NAME=geom', '-overwrite']
+            # pprint(pargs)
+            p = Popen(pargs)  # , stdout=PIPE, stderr=PIPE)
+            p.communicate()
+            print "Success in raw KML conversion"
+        except:
+            print "Failed in raw KML conversion trying manual parsing."
+            print "changing kml folder name in " + kml_file
+            tree = et.parse(kml_file)
+            element = tree.xpath('//kml:Folder/kml:name', namespaces={'kml': "http://www.opengis.net/kml/2.2"})
+            if 0 in element:
+                element[0].text = table_name
+            else:
+                print 'no kml:Folder tag found'
+            find = et.ETXPath('//{http://www.opengis.net/kml/2.2}Folder/{http://www.opengis.net/kml/2.2}name')
+            element = find(tree)
+            if len(element):
+                for x in range(0, len(element)):
+                    print element[x].text
+                    element[x].text = table_name
+            else:
+                print 'no Folder tag found'
+            find = et.ETXPath('//{http://earth.google.com/kml/2.1}Folder/{http://earth.google.com/kml/2.1}name')
+            element = find(tree)
+            if len(element):
+                for x in range(0, len(element)):
+                    print element[x].text
+                    element[x].text = table_name
+            else:
+                print 'no Folder tag found'
+            with open(table_name + ".kml", "w") as ofile:
+                ofile.write(et.tostring(tree))
+            print "converting to pgsql " + table_name + ".kml"
+            pargs = ['ogr2ogr', '-f', 'PostgreSQL', "--config", "PG_USE_COPY", "YES",
+                     'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' + db_settings[
+                         'user'] + '\' password=\'' + db_settings['password'] + '\''
+                , table_name + ".kml", '-lco', 'GEOMETRY_NAME=geom', '-overwrite']
+            # pprint(pargs)
+            p = Popen(pargs)  # , stdout=PIPE, stderr=PIPE)
+            p.communicate()
     elif len(grid_resources) > 0:
         print "using grid file " + shp_resources[0]['url'].replace('https', 'http')
         (filepath, headers) = urllib.urlretrieve(grid_resources[0]['url'].replace('https', 'http'), "input.zip")
