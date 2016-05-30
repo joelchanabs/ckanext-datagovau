@@ -97,8 +97,13 @@ else:
 
 ckan = ckanapi.RemoteCKAN(address=api_url, apikey=api_key)
 print dataset_id
-dataset = ckan.action.package_show(id=dataset_id)
-print "loaded dataset" + dataset['name']
+try:
+    dataset = ckan.action.package_show(id=dataset_id)
+    print "loaded dataset " + dataset['name']
+except:
+    print "dataset not found " + dataset['name']
+    sys.exit(0)
+
 # pprint(dataset)
 if dataset['organization']['name'] in omitted_orgs:
     print(dataset['organization']['name'] + " in omitted_orgs blacklist")
