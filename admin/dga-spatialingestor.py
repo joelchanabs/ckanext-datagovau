@@ -101,7 +101,7 @@ try:
     dataset = ckan.action.package_show(id=dataset_id)
     print "loaded dataset " + dataset['name']
 except:
-    print "dataset not found " + dataset['name']
+    print "dataset not found " + dataset_id
     sys.exit(0)
 
 # pprint(dataset)
