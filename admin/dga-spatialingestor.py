@@ -33,7 +33,17 @@ geoserver_addr = "http://localhost:8080/geoserver/"
 geoserver_user = "admin"
 geoserver_passwd = ""
 email_addr = "greg.vonnessi@linkdigital.com.au"  # , data.gov@finance.gov.au"
-omitted_orgs = ['australianantarcticdivision', 'geoscienceaustralia']
+omitted_orgs = ['australianantarcticdivision',
+                'australian-institute-of-marine-science',
+                'bureauofmeteorology',
+                'city-of-hobart',
+                'cityoflaunceston',
+                'departmentofenvironment',
+                'dpipwe',
+                'geoscienceaustralia',
+                'logan-city-council',
+                'mineral-resources-tasmania',
+                'nsw-land-and-property']
 omitted_pkgs = ['city-of-gold-coast-road-closures', 'central-geelong-3d-massing-model']
 
 
@@ -180,7 +190,7 @@ try:
     psql = True
     using_kml = False
     # load esri shapefiles
-    if len(shp_resources) > 0 and dataset['name'] != 'city-of-hobart':
+    if len(shp_resources) > 0:
         print "using SHP file " + shp_resources[0]['url'].replace('https', 'http')
         (filepath, headers) = urllib.urlretrieve(shp_resources[0]['url'].replace('https', 'http'), "input.zip")
         print "shp downlaoded"
