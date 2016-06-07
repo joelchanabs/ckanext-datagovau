@@ -441,7 +441,7 @@ try:
         if format == "json" and format not in existing_formats and "JSON" not in existing_formats:
             ckan.call_action('resource_create', {"package_id": dataset['id'], "name": dataset['title'] + " GeoJSON",
                                                  "description": "For use in web-based data visualisation of this collection",
-                                                 "format": format, "url": url, "last_modified": datetime.now().isoformat()})
+                                                 "format": "geojson", "url": url, "last_modified": datetime.now().isoformat()})
         if format == "csv" and format not in existing_formats:
             ckan.call_action('resource_create', {"package_id": dataset['id'], "name": dataset['title'] + " CSV",
                                                  "description": "For summary of the objects/data in this collection",
