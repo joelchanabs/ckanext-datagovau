@@ -56,6 +56,12 @@ def get_ddg_site_statistics():
             stats['unpub_data_count'] = fDict['count']
             break
 
+    result = model.Session.execute(
+        '''select count(*) from related r
+           left join related_dataset rd on r.id = rd.related_id
+           where rd.status = 'active' or rd.id is null''').first()[0]
+    stats['related_count'] = result
+
     stats['open_count'] = logic.get_action('package_search')({}, {"fq": "isopen:true", "rows": 1})['count']
 
     stats['api_count'] = logic.get_action('resource_search')({}, {"query": ["format:wms"]})['count'] + len(

@@ -1,0 +1,56 @@
+{#
+Displays a single related item.
+
+related - The related item dict.
+pkg_id  - The id of the owner package. If present the edit button will be
+          displayed.
+
+Example:
+
+
+
+#}
+{% set placeholder_map = {
+'application': h.url_for_static('/base/images/placeholder-application.png')
+} %}
+{% set tooltip = _('Go to {related_item_type}').format(related_item_type=related.type|replace('_', ' ')|title) %}
+<li class="related-item media-item">
+  {% if related.image_url %}
+    {% if 'http' in related.image_url %}
+    <img src="{{ related.image_display_url or related.image_url }}" alt="{{ related.title }}" class="media-image">
+    {% else %}
+    <img src="{{ h.url_for_static(
+            'uploads/related/%s' % related.image_url,
+            qualified=True
+        )  }}" alt="{{ related.title }}" class="media-image">
+    {% endif %}
+  {% endif %}
+  <h3 class="media-heading">{{ related.title }}</h3>
+  {% if related.description %}
+    <div class="prose">
+{{ h.render_markdown(related.description) }}
+</div>
+  {% endif %}
+
+<small>Using dataset: {{ h.get_related_dataset(related.id) }}</small>
+
+
+  <a class="media-view" href="{{ related.url }}" target="_blank" title="{{ tooltip }}">
+    <span>{{ tooltip }}</span>
+    <span class="banner">
+      {%- if related.type == 'application' -%}
+        app
+      {%- elif related.type == 'visualization' -%}
+        viz
+      {%- else -%}
+        {{ related.type | replace('news_', '') }}
+      {%- endif -%}
+    </span>
+  </a>
+  {% if pkg_id %}
+    {{ h.nav_link(_('Edit'), controller='related', action='edit', id=pkg_id, related_id=related.id, class_='btn btn-primary btn-small media-edit') }}
+  {% endif %}
+</li>
+{% if position is divisibleby 3 %}
+  <li class="clearfix js-hide"></li>
+{% endif %}
