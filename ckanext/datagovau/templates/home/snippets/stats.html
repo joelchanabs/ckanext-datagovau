@@ -1,71 +1,46 @@
-
 {% set stats = h.get_ddg_site_statistics() %}
 
 <div class="box stats">
-  <div class="inner">
-    <h3>{{ _('{0} statistics').format(g.site_title) }}</h3>
-    <ul>
-      <li>
-        <a href="{{ h.url_for(controller='package', action='search') }}">
-          <b>{{ h.SI_number_span(stats.dataset_count) }}</b>
-          {{ _('dataset') if stats.dataset_count == 1 else _('discoverable datasets') }}
-        </a>
-      </li>
-      <li>
-        <a href="{{ h.url_for(controller='organization', action='index') }}">
-          <b>{{ h.SI_number_span(stats.organization_count) }}</b>
-          {{ _('organisation') if stats.organization_count == 1 else _('organisations') }}
-        </a>
-      </li>
-      <li>
-        <a href="{{ h.url_for(controller='group', action='index') }}">
-          <b>{{ h.SI_number_span(stats.group_count) }}</b>
-          {{ _('group') if stats.group_count == 1 else _('groups') }}
-        </a>
-      </li>
-    </ul>
-  </div>
+    <div class="inner">
+        <h3>{{ _('{0} statistics').format(g.site_title) }}</h3>
+        <ul>
+            <li>
+                <a href="{{ h.url_for(controller='package', action='search') }}">
+                    <b>{{ h.SI_number_span(stats.dataset_count) }}</b>
+                    {{ _('discoverable dataset') if stats.dataset_count == 1 else _('discoverable datasets') }}
+                </a>
+            </li>
+            <li>
+                <a href="{{ h.url_for(controller='package', action='search') }}">
+                    <b>{{ h.SI_number_span(stats.api_count) }}</b>
+                    {{ _('API enabled resource') if stats.api_count == 1 else _('API enabled resources') }}
+                </a>
+            </li>
+            <li>
+                <a href="{{ h.url_for(controller='package', action='search', isopen='true') }}">
+                    <b>{{ h.SI_number_span(stats.open_count) }}</b>
+                    {{ _('openly licenced dataset') if stats.open_count == 1 else _('openly licenced datasets') }}
+                </a>
+            </li>
+            <li>
+                <a href="{{ h.url_for(controller='package', action='search', unpublished='True') }}">
+                    <b>{{ h.SI_number_span(stats.unpub_data_count) }}</b>
+                    {{ _('unpublished dataset') if stats.unpub_data_count == 1 else _('unpublished datasets') }}
+                </a>
+            </li>
+
+        </ul>
+    </div>
 </div>
 
-          <div id="feeddiv">
+<div id="feeddiv">
+    <div class='module module-shallow module-narrow module-dark info box' style='color:black'><h2>Latest data.gov.au
+        News</h2><i class='ckan-icon ckan-icon-feed'></i><a href='https://blog.data.gov.au/blogs/rss.xml'>&nbsp;Subscribe
+        to the blog </a></div>
+
+    {% for entry in h.blogfeed().entries %}
+    <div class='module module-shallow module-narrow module-dark info box'><h3><a
+            href='{{entry.link}}'>{{entry.title}}</a></h3>
+        <font color='black'>Posted on {{entry.date}}</font></div>
+    {% endfor %}
 </div>
-
-<script type="text/javascript" src="//www.google.com/jsapi">
-</script>
-<script type="text/javascript">
-google.load("feeds", "1") //Load Google Ajax Feed API (version 1)
-</script>
-
-<script type="text/javascript">
-
-var feedcontainer=document.getElementById("feeddiv")
-var feedurl="http://www.finance.gov.au/taxonomy/term/1274/feed"
-var feedlimit=4
-var rssoutput="<div  class='module module-shallow module-narrow module-dark info box' style='color:black'><h2>Latest data.gov.au News</h2><i class='ckan-icon ckan-icon-feed'></i><a href='http://www.finance.gov.au/taxonomy/term/1274/feed/'>&nbsp;Subscribe to the blog </a></div>"
-
-
-function rssfeedsetup(){
-var feedpointer=new google.feeds.Feed(feedurl) //Google Feed API method
-feedpointer.setNumEntries(feedlimit) //Google Feed API method
-feedpointer.load(displayfeed) //Google Feed API method
-}
-
-function displayfeed(result){
-if (!result.error){
-var thefeeds=result.feed.entries
-for (var i=0; i<thefeeds.length; i++) {
-rssoutput+="<div  class='module module-shallow module-narrow module-dark info box'><h3><a href='" + thefeeds[i].link + "'>" + thefeeds[i].title + "</a></h3>"
-rssoutput+= " <font color='black'>Posted on " + new Date(thefeeds[i].publishedDate).toDateString() + "</font></div>"
-}
-rssoutput+=""
-feedcontainer.innerHTML=rssoutput
-}
-else
-alert("Error fetching feeds!")
-}
-
-window.onload=function(){
-rssfeedsetup()
-}
-
-</script>
