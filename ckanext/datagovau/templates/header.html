@@ -1,8 +1,8 @@
 {% ckan_extends %}
 {% block header_wrapper %}
 <a href="#main_content" class="skip-link">Skip to main content</a>
-        {{ super() }}
-        {% endblock %}
+{{ super() }}
+{% endblock %}
 {% block header_account_logged %}
 {% if c.userobj.sysadmin %}
 <li>
@@ -12,14 +12,16 @@
 </li>
 {% endif %}
 <li>
-    <a href="{{ h.url_for(controller='user', action='read', id=c.userobj.name) }}" class="image" title="{{ _('View profile') }}">
+    <a href="{{ h.url_for(controller='user', action='read', id=c.userobj.name) }}" class="image"
+       title="{{ _('View profile') }}">
         {{ h.gravatar((c.userobj.email_hash if c and c.userobj else ''), size=22) }}
         <span class="username">{{ c.userobj.display_name }}</span>
     </a>
 </li>
 {% set new_activities = h.new_activities() %}
 <li class="notifications {% if new_activities > 0 %}notifications-important{% endif %}">
-    {% set notifications_tooltip = ngettext('Dashboard (%(num)d new item)', 'Dashboard (%(num)d new items)', new_activities) %}
+    {% set notifications_tooltip = ngettext('Dashboard (%(num)d new item)', 'Dashboard (%(num)d new items)',
+    new_activities) %}
     <a href="{{ h.url_for(controller='user', action='dashboard') }}" title="{{ notifications_tooltip }}">
         <i class="icon-dashboard"> Dashboard</i>
         <span>{{ new_activities }}</span>
@@ -42,28 +44,32 @@
 {% endblock %}
 
 {% block header_site_navigation %}
-    <nav class="section navigation">
-      <ul class="nav nav-pills">
+<nav class="section navigation">
+    <ul class="nav nav-pills">
         {% block header_site_navigation_tabs %}
         {{ h.build_nav_main(
-          ('search', _('Datasets')),
-          ('organizations_index', _('Organizations')),
-          ('about', _('About')),
-          ('stats', _('Site Statistics'))
+        ('search', _('Datasets')),
+        ('organizations_index', _('Organizations')),
+        ('about', _('About')),
+        ('stats', _('Site Statistics'))
         ) }}
-  <li><a href="http://nationalmap.nicta.com.au">National Map</a></li>
-  <li><a href="https://datagovau.ideascale.com/">Request Data</a></li>
-  <li><a href="https://toolkit.data.gov.au/">Toolkit</a></li>
+
+        <li><a href="/related?sort=created_desc">Use Cases</a></li>
+        <li><a href="http://nationalmap.gov.au">National Map</a></li>
+        <li><a href="https://datagovau.ideascale.com/">Request Data</a></li>
+        <li><a href="https://toolkit.data.gov.au/">Toolkit</a></li>
         {% endblock %}
-      </ul>
-    </nav>
+    </ul>
+</nav>
 {% endblock %}
 
 
 {% block header_logo %}
 
 {% if g.site_logo %}
-<a class="logo" href="{{ h.url('home') }}"><img src="{{ h.url_for_static(g.site_logo)  }}" alt="Australian Government - data.gov.au Logo" title="{{ g.site_title }}" /></a>
+<a class="logo" href="{{ h.url('home') }}"><img src="{{ h.url_for_static(g.site_logo)  }}"
+                                                alt="Australian Government - data.gov.au Logo"
+                                                title="{{ g.site_title }}"/></a>
 {% else %}
 <h1>
     <a href="{{ h.url('home') }}">{{ g.site_title }}</a>
