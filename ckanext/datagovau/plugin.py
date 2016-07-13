@@ -3,6 +3,7 @@ import ckan.lib as lib
 import ckan.plugins.toolkit as tk
 import ckan.model as model
 import ckan.logic as logic
+import ckan.ad
 import ckanext.datastore.db as datastore_db
 import os, time
 
@@ -148,6 +149,14 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         tk.add_public_directory(config, 'theme/public')
         tk.add_resource('theme/public', 'ckanext-datagovau')
         tk.add_resource('public/scripts/vendor/jstree', 'jstree')
+
+        # Rename showcase admin tab if necessary
+        admin_tabs_dict = config.get("ckan.admin_tabs", {})
+        if 'ckanext_showcase_admins' in admin_tabs_dict:
+            admin_tabs_dict['ckanext_showcase_admins'] = 'Use Case Config'
+
+        config.update({'ckan.admin_tabs': admin_tabs_dict})
+
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
