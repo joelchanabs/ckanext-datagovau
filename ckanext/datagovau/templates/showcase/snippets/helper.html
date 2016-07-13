@@ -1,0 +1,25 @@
+<div class="module module-narrow module-shallow">
+    <h2 class="module-heading">
+        <i class="icon-info-sign"></i>
+        {{ _('What are use cases?') }} </h2>
+    <div class="module-content">
+        {% trans %}
+        <p>Use Cases are any apps, articles, visualisations or ideas using datasets.</p>
+
+        <p>For example, it could be a custom visualisation, pictograph
+            or bar chart, an app using all or part of the data or even a news story
+            that references datasets from this site.</p>
+
+        <p> Send your ideas to <a href="mailto:data@pmc.gov.au">data@pmc.gov.au</a> with Title; Description; URL; Image
+            URL; and Type: [API|Applications|Idea|News Article|Paper|Post|Visualisation]</p>
+        {% endtrans %}
+
+        {% if h.check_access('ckanext_showcase_admin_add') %}
+        <p>
+            {% trans url=h.url_for(controller='ckanext.showcase.controller:ShowcaseController',
+            action='manage_showcase_admins') %}Sysadmins can manage Showcase Admins from the <a href='{{ url }}'>Showcase
+            configuration page</a>.{% endtrans %}
+        </p>
+        {% endif %}
+    </div>
+</div>
