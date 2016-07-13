@@ -31,17 +31,6 @@ def get_user_datasets_public(user_dict):
     return [pkg for pkg in get_user_datasets(user_dict) if pkg['state'] == 'active']
 
 
-def get_related_dataset(related_id):
-    result = model.Session.execute(
-        "select title from related_dataset inner join package on package.id = related_dataset.dataset_id where related_id =\'" + related_id + "\' limit 1;").first()[
-        0]
-    return result
-
-
-def related_create(context, data_dict=None):
-    return {'success': False, 'msg': 'No one is allowed to create related items'}
-
-
 def get_ddg_site_statistics():
     stats = {}
     stats['dataset_count'] = logic.get_action('package_search')({}, {"rows": 1})['count']
@@ -149,18 +138,10 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         tk.add_resource('theme/public', 'ckanext-datagovau')
         tk.add_resource('public/scripts/vendor/jstree', 'jstree')
 
-        # Rename showcase admin tab if necessary
-        admin_tabs_dict = config.get("ckan.admin_tabs", {})
-        if 'ckanext_showcase_admins' in admin_tabs_dict:
-            admin_tabs_dict['ckanext_showcase_admins'] = 'Use Case Config'
-
-        config.update({'ckan.admin_tabs': admin_tabs_dict})
-
         # config['licenses_group_url'] = 'http://%(ckan.site_url)/licenses.json'
 
     def get_helpers(self):
         return {'get_user_datasets': get_user_datasets, 'get_user_datasets_public': get_user_datasets_public,
-                'get_related_dataset': get_related_dataset,
                 'get_ddg_site_statistics': get_ddg_site_statistics, 'get_resource_file_size': get_resource_file_size,
                 'blogfeed': blogfeed}
 
