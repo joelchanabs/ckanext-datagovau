@@ -4,10 +4,10 @@ Based on snippets/search_result_text.html
 
 #}
 {% if type == 'showcase' %}
-  {% set text_query = ungettext("{number} use cases found for '{query}'", "{number} uses cases found for '{query}'", count) %}
-  {% set text_query_none = _("Use cases found for '{query}'") %}
-  {% set text_no_query = ungettext("{number} use cases found", "{number} use cases found", count) %}
-  {% set text_no_query_none = _("No use cases found") %}
+  {% set text_query = ungettext("{number} Use Cases found for '{query}'", "{number} Uses Cases found for '{query}'", count) %}
+  {% set text_query_none = _("Use Cases found for '{query}'") %}
+  {% set text_no_query = ungettext("{number} Use Cases found", "{number} Use Cases found", count) %}
+  {% set text_no_query_none = _("No Use Cases found") %}
 {%- endif -%}
 
 {% if query %}
