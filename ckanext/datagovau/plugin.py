@@ -124,9 +124,6 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
             search_results['search_facets']['unpublished'] = restructured_facet
         return search_results
 
-    def get_auth_functions(self):
-        return {'related_create': related_create}
-
     def update_config(self, config):
         # Add this plugin's templates dir to CKAN's extra_template_paths, so
         # that CKAN will use this plugin's custom templates.
