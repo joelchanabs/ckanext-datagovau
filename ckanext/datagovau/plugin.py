@@ -3,7 +3,6 @@ import ckan.lib as lib
 import ckan.plugins.toolkit as tk
 import ckan.model as model
 import ckan.logic as logic
-import ckan.ad
 import ckanext.datastore.db as datastore_db
 import os, time
 
