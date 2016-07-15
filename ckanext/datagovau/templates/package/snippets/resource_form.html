@@ -1,51 +1,17 @@
 {% ckan_extends %}
 
-    {% block basic_fields_url %}
-      {% set is_upload = (data.url_type == 'upload') %}
-      {% set field_url='url' %}
-      {% set field_upload='upload' %}
-      {% set field_clear='clear_upload' %}
-      {% set   is_upload_enabled=h.uploads_enabled() %}
-      {% set is_url=data.url and not is_upload %}
-      {% set   upload_label=_('File') %}
-      {% set url_label=_('URL') %}
-
-  {% set placeholder = placeholder if placeholder else _('http://example.com/my-image.jpg') %}
-  {% set url_label = url_label or _('Image URL')  %}
-  {% set upload_label = upload_label or _('Image')  %}
-
-  {% if is_upload_enabled %}
-  <div class="image-upload" data-module="image-upload" data-module-is_url="{{ 'true' if is_url else 'false' }}" data-module-is_upload="{{ 'true' if is_upload else 'false' }}"
-       data-module-field_url="{{ field_url }}" data-module-field_upload="{{ field_upload }}" data-module-field_clear="{{ field_clear }}" data-module-upload_label="{{ upload_label }}">
-  {% endif %}
-
-  {% call form.input(field_url, label=url_label, id='field-image-url', placeholder=placeholder, value=data.get(field_url), error=errors.get(field_url), classes=['control-full']) %}
-<span id="autoupdate_form">
-      {% call form.select('autoupdate', label=_('Generate API from this Link'), options= [{'value': 'active', 'text': 'Active'}, {'value': 'inactive', 'text': 'Inactive'}], selected='Inactive', error=errors.autoupdate) %}
-<br/>
-Where a file is compatible with either CKAN or GeoServer we will attempt to make a functional end-point for this resource. The link provided above will also be checked for a new version based on the update frequency as set at the dataset level.
-</span>
-{% endcall %}
-{% endcall %}
-
-  {% if is_upload_enabled %}
-    {{ form.input(field_upload, label=upload_label, id='field-image-upload', type='file', placeholder='', value='', error='', classes=['control-full']) }}
-    {% if is_upload %}
-      {{form.checkbox(field_clear, label=_('Clear Upload'), id='field-clear-upload', value='true', error='', classes=['control-full']) }}
-    {% endif %}
-  {% endif %}
-
-  {% if is_upload_enabled %}</div>{% endif %}
-
-
-  {% endblock %}
-
   {% block metadata_fields %}
+{% call form.checkbox('zip_extract', checked=data.zip_extract, label='Extract Resources from Zip Files', value='True') %}
+<br/>
+Whether any resources inside zip files should be extracted into separate resources.
+
+{% endcall %}
+
     {% call form.input('last_modified', label=_('Last Modified'), id='field-last_modified',
 placeholder=_('When the file uploaded was last modified'),
 value=data.last_modified, error=errors.last_modified, classes=['control-full'], is_required='true') %}
         <br/>
-When was the file uploaded was last modified? If left blank, assumed to be the date of last modification of resource information on this site. 
+When was the file uploaded was last modified? If left blank, assumed to be the date of last modification of resource information on this site.
     {% endcall %}
 
 <span id="wms_layer" style="display:none;">
