@@ -12,12 +12,22 @@
 
         <p> Send your ideas to <a href="mailto:data@pmc.gov.au">data@pmc.gov.au</a> with Title; Description; URL; Image
             URL; and Type: [API|Applications|Idea|News Article|Paper|Post|Visualisation]</p>
+
+        <p> The applications submitted to data.gov.au have been developed and are operated and owned by third parties.
+            data.gov.au does not endorse, approve, or certify the applications or the developers, nor does it make any
+            representation or warranty that the information based on which the applications have been developed, is
+            accurate, complete, or correct. Your use of the applications and the information contained therein is at
+            your sole risk.</p>
+
+        <p> Applications submitted to data.gov.au are currently approved for publication on the general level of their
+            context and appropriateness. We do not own responsibility for the regular update and maintenance of the
+            applications. Any queries about applications or tools published need to be directed to the originator.</p>
         {% endtrans %}
 
         {% if h.check_access('ckanext_showcase_admin_add') %}
         <p>
             {% trans url=h.url_for(controller='ckanext.showcase.controller:ShowcaseController',
-            action='manage_showcase_admins') %}Sysadmins can manage Showcase Admins from the <a href='{{ url }}'>Showcase
+            action='manage_showcase_admins') %}Sysadmins can manage Showcase Admins from the <a href='{{ url }}'>Use Case
             configuration page</a>.{% endtrans %}
         </p>
         {% endif %}
