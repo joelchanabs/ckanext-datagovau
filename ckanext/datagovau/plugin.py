@@ -4,7 +4,7 @@ import ckan.plugins.toolkit as tk
 import ckan.model as model
 import ckan.logic as logic
 import ckanext.datastore.db as datastore_db
-import os, time
+import os, time, requests
 
 import ckanext.datagovau.action as action
 from ckan.lib.plugins import DefaultOrganizationForm
@@ -101,6 +101,16 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
             facets['unpublished'] = 'Published Status'
         return facets
 
+    def before_search(self, search_params):
+        """
+        IPackageController::before_search.
+
+        Add default sorting to package_search.
+        """
+        if 'sort' not in search_params:
+            search_params['sort'] = 'extras_harvest_portal asc, score desc, metadata_modified desc'
+        return search_params
+
     def after_search(self, search_results, data_dict):
         if 'unpublished' in search_results['facets']:
             search_results['facets']['unpublished']['Published datasets'] = search_results['count'] - \
@@ -121,6 +131,7 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
                 new_facet_dict['count'] = value_
                 restructured_facet['items'].append(new_facet_dict)
             search_results['search_facets']['unpublished'] = restructured_facet
+
         return search_results
 
     def update_config(self, config):
