@@ -12,14 +12,6 @@ from ckan.lib.plugins import DefaultOrganizationForm
 from ckan.lib import uploader, formatters
 import feedparser
 
-cache_enabled = tk.asbool(config.get('ckanext.stats.cache_enabled', 'True'))
-
-if cache_enabled:
-    from pylons import cache
-
-    cache_fast_timeout = tk.asint(config.get('ckanext.stats.cache_fast_timeout', '600'))
-    our_cache = cache.get_cache('ddg_ext', type='dbm')
-
 # get user created datasets and those they have edited
 def get_user_datasets(user_dict):
     context = {'model': model, 'user': user_dict['name']}
@@ -66,11 +58,13 @@ def get_ddg_site_statistics():
 
         return stats
 
-    if cache_enabled:
+    if tk.asbool(config.get('ckanext.stats.cache_enabled', 'True')):
+        from pylons import cache
+
         key = 'ddg_site_stats'
-        res_stats = our_cache.get_value(key=key,
+        res_stats = cache.get_cache('ddg_ext', type='dbm').get_value(key=key,
                                         createfunc=fetch_ddg_stats,
-                                        expiretime=cache_fast_timeout)
+                                        expiretime=tk.asint(config.get('ckanext.stats.cache_fast_timeout', '600')))
     else:
         res_stats = fetch_ddg_stats()
 
