@@ -7,10 +7,18 @@ import ckanext.datastore.db as datastore_db
 import os, time, requests
 
 import ckanext.datagovau.action as action
+from pylons import config
 from ckan.lib.plugins import DefaultOrganizationForm
 from ckan.lib import uploader, formatters
 import feedparser
 
+cache_enabled = tk.asbool(config.get('ckanext.stats.cache_enabled', 'True'))
+
+if cache_enabled:
+    from pylons import cache
+
+    cache_fast_timeout = tk.asint(config.get('ckanext.stats.cache_fast_timeout', '600'))
+    our_cache = cache.get_cache('stats', type='dbm')
 
 # get user created datasets and those they have edited
 def get_user_datasets(user_dict):
@@ -32,31 +40,42 @@ def get_user_datasets_public(user_dict):
 
 
 def get_ddg_site_statistics():
-    stats = {}
-    stats['dataset_count'] = logic.get_action('package_search')({}, {"rows": 1})['count']
-    stats['group_count'] = len(logic.get_action('group_list')({}, {}))
-    stats['organization_count'] = len(logic.get_action('organization_list')({}, {}))
 
-    stats['unpub_data_count'] = 0
-    for fDict in \
-    logic.get_action('package_search')({}, {"facet.field": ["unpublished"], "rows": 1})['search_facets']['unpublished'][
-        'items']:
-        if fDict['name'] == "Unpublished datasets":
-            stats['unpub_data_count'] = fDict['count']
-            break
+    def fetch_ddg_stats():
+        stats = {'dataset_count': logic.get_action('package_search')({}, {"rows": 1})['count'],
+                 'group_count': len(logic.get_action('group_list')({}, {})),
+                 'organization_count': len(logic.get_action('organization_list')({}, {})), 'unpub_data_count': 0}
 
-    result = model.Session.execute(
-        '''select count(*) from related r
-           left join related_dataset rd on r.id = rd.related_id
-           where rd.status = 'active' or rd.id is null''').first()[0]
-    stats['related_count'] = result
+        for fDict in \
+        logic.get_action('package_search')({}, {"facet.field": ["unpublished"], "rows": 1})['search_facets']['unpublished'][
+            'items']:
+            if fDict['name'] == "Unpublished datasets":
+                stats['unpub_data_count'] = fDict['count']
+                break
 
-    stats['open_count'] = logic.get_action('package_search')({}, {"fq": "isopen:true", "rows": 1})['count']
+        result = model.Session.execute(
+            '''select count(*) from related r
+               left join related_dataset rd on r.id = rd.related_id
+               where rd.status = 'active' or rd.id is null''').first()[0]
+        stats['related_count'] = result
 
-    stats['api_count'] = logic.get_action('resource_search')({}, {"query": ["format:wms"]})['count'] + len(
-        datastore_db.get_all_resources_ids_in_datastore())
+        stats['open_count'] = logic.get_action('package_search')({}, {"fq": "isopen:true", "rows": 1})['count']
 
-    return stats
+        stats['api_count'] = logic.get_action('resource_search')({}, {"query": ["format:wms"]})['count'] + len(
+            datastore_db.get_all_resources_ids_in_datastore())
+
+        return stats
+
+    if cache_enabled:
+        key = 'ddg_site_stats'
+        res_stats = our_cache.get_value(key=key,
+                                        createfunc=fetch_ddg_stats,
+                                        expiretime=cache_fast_timeout)
+    else:
+        res_stats = fetch_ddg_stats()
+
+    return res_stats
+
 
 
 def get_resource_file_size(rsc):
