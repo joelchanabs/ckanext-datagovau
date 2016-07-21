@@ -18,7 +18,7 @@ if cache_enabled:
     from pylons import cache
 
     cache_fast_timeout = tk.asint(config.get('ckanext.stats.cache_fast_timeout', '600'))
-    our_cache = cache.get_cache('stats', type='dbm')
+    our_cache = cache.get_cache('ddg_ext', type='dbm')
 
 # get user created datasets and those they have edited
 def get_user_datasets(user_dict):
