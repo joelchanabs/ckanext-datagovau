@@ -21,7 +21,9 @@ setup(
 	entry_points=\
 	"""
         [ckan.plugins]
-	datagovau=ckanext.datagovau.plugin:DataGovAuPlugin
-	datagovau_hierarchy=ckanext.datagovau.plugin:HierarchyForm
+		datagovau=ckanext.datagovau.plugin:DataGovAuPlugin
+		datagovau_hierarchy=ckanext.datagovau.plugin:HierarchyForm
+		[ckan.celery_task]
+        tasks=ckanext.datagovau.celery_import:task_imports
 	""",
 )

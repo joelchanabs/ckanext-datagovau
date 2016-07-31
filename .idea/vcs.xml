@@ -4,12 +4,7 @@
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../ckanext-agls" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../ckanext-datajson" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../ckanext-dga-ga-report" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../ckanext-dga-stats" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../ckanext-googleanalytics" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../ckanext-hierarchy" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../ckanext-spatial" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../datapusher" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../dga-spatialingestor" vcs="Git" />
   </component>
 </project>
