@@ -1,150 +1,26 @@
-import ckan.plugins as plugins
-import ckan.lib as lib
-import ckan.lib.cli as cli
-from ckan.lib.celery_app import celery
-import ckan.plugins.toolkit as tk
 import ckan.model as model
-from ckan.model.domain_object import DomainObjectOperation
-import ckan.logic as logic
-import ckanext.datastore.db as datastore_db
-import os, time, uuid
-
-import ckanext.datagovau.action as action
-from pylons import config
+import ckan.plugins as p
+import ckan.plugins.toolkit as toolkit
 from ckan.lib.plugins import DefaultOrganizationForm
-from ckan.lib import uploader, formatters
-import feedparser
 
-import logging
+import ckanext.datagovau.helpers as helpers
+import ckanext.datagovau.logic.action as action
+import ckanext.datagovau.logic.auth as auth
+from ckanext.datagovau.helpers import log, MSG_SPATIAL_PREFIX, MSG_SPATIAL_SKIP_SUFFIX, MSG_ZIP_PREFIX, \
+    MSG_ZIP_SKIP_SUFFIX
 
-log = logging.getLogger('ckanext_datagovau')
-
-
-# get user created datasets and those they have edited
-def get_user_datasets(user_dict):
-    context = {'model': model, 'user': user_dict['name']}
-    created_datasets_list = user_dict['datasets']
-    active_datasets_list = [logic.get_action('package_show')(context, {'id': x['data']['package']['id']}) for x in
-                            lib.helpers.get_action('user_activity_list', {'id': user_dict['id']}) if
-                            x['data'].get('package')]
-    raw_list = sorted(active_datasets_list + created_datasets_list, key=lambda pkg: pkg['state'])
-    filtered_dict = {}
-    for dataset in raw_list:
-        if dataset['id'] not in filtered_dict.keys():
-            filtered_dict[dataset['id']] = dataset
-    return filtered_dict.values()
-
-
-def get_user_datasets_public(user_dict):
-    return [pkg for pkg in get_user_datasets(user_dict) if pkg['state'] == 'active']
-
-
-def get_ddg_site_statistics():
-    def fetch_ddg_stats():
-        stats = {'dataset_count': logic.get_action('package_search')({}, {"rows": 1})['count'],
-                 'group_count': len(logic.get_action('group_list')({}, {})),
-                 'organization_count': len(logic.get_action('organization_list')({}, {})), 'unpub_data_count': 0}
-
-        for fDict in \
-                logic.get_action('package_search')({}, {"facet.field": ["unpublished"], "rows": 1})['search_facets'][
-                    'unpublished'][
-                    'items']:
-            if fDict['name'] == "Unpublished datasets":
-                stats['unpub_data_count'] = fDict['count']
-                break
-
-        result = model.Session.execute(
-            '''select count(*) from related r
-               left join related_dataset rd on r.id = rd.related_id
-               where rd.status = 'active' or rd.id is null''').first()[0]
-        stats['related_count'] = result
-
-        stats['open_count'] = logic.get_action('package_search')({}, {"fq": "isopen:true", "rows": 1})['count']
-
-        stats['api_count'] = logic.get_action('resource_search')({}, {"query": ["format:wms"]})['count'] + len(
-            datastore_db.get_all_resources_ids_in_datastore())
-
-        return stats
-
-    if tk.asbool(config.get('ckanext.stats.cache_enabled', 'True')):
-        from pylons import cache
-
-        key = 'ddg_site_stats'
-        res_stats = cache.get_cache('ddg_ext', type='dbm').get_value(key=key,
-                                                                     createfunc=fetch_ddg_stats,
-                                                                     expiretime=tk.asint(
-                                                                         config.get('ckanext.stats.cache_fast_timeout',
-                                                                                    '600')))
-    else:
-        res_stats = fetch_ddg_stats()
-
-    return res_stats
-
-
-def get_resource_file_size(rsc):
-    if rsc.get('url_type') == 'upload':
-        upload = uploader.ResourceUpload(rsc)
-        value = None
-        try:
-            value = os.path.getsize(upload.get_path(rsc['id']))
-            value = formatters.localised_filesize(int(value))
-        except Exception:
-            # Sometimes values that can't be converted to ints can sneak
-            # into the db. In this case, just leave them as they are.
-            pass
-        return value
-    return None
-
-
-def blogfeed():
-    d = feedparser.parse('https://blog.data.gov.au/blogs/rss.xml')
-    for entry in d.entries:
-        entry.date = time.strftime("%a, %d %b %Y", entry.published_parsed)
-    return d
-
-
-class DataGovAuPlugin(plugins.SingletonPlugin,
-                      tk.DefaultDatasetForm):
+class DataGovAuPlugin(p.SingletonPlugin,
+                      toolkit.DefaultDatasetForm):
     '''An example IDatasetForm CKAN plugin.
 
     Uses a tag vocabulary to add a custom metadata field to datasets.
 
     '''
-    plugins.implements(plugins.IConfigurable, inherit=True)
-    plugins.implements(plugins.IConfigurer, inherit=False)
-    plugins.implements(plugins.ITemplateHelpers, inherit=False)
-    plugins.implements(plugins.IActions, inherit=True)
-    plugins.implements(plugins.IPackageController, inherit=True)
-    plugins.implements(plugins.IFacets, inherit=True)
-    plugins.implements(plugins.IDomainObjectModification, inherit=True)
-
-    def configure(self, config):
-        core_url = config.get('ckan.site_url', 'http://localhost:8000/')
-        self.context = {'user': model.User.get(config.get('ckan.dataingestor.ckan_user', 'default')).name,
-                        'postgis': cli.parse_db_config('ckan.dataingestor.postgis_url'),
-                        'geoserver': cli.parse_db_config('ckan.dataingestor.geoserver_url'),
-                        'geoserver_public_url': config.get('ckan.dataingestor.public_geoserver',
-                                                           core_url + '/geoserver'),
-                        'org_blacklist': list(
-                            set(tk.aslist(config.get('ckan.dataingestor.spatial.org_blacklist', [])))),
-                        'pkg_blacklist': list(
-                            set(tk.aslist(config.get('ckan.dataingestor.spatial.pkg_blacklist', [])))),
-                        'user_blacklist': list(set(map(lambda x: model.User.get(x).id,
-                                                       tk.aslist(
-                                                           config.get('ckan.dataingestor.spatial.user_blacklist',
-                                                                      []))))),
-                        'target_spatial_formats': list(set(map(lambda x: x.upper(),
-                                                               tk.aslist(
-                                                                   config.get(
-                                                                       'ckan.dataingestor.spatial.target_formats',
-                                                                       []))))),
-                        'target_zip_formats': list(set(map(lambda x: x.upper(),
-                                                           tk.aslist(
-                                                               config.get('ckan.dataingestor.zip.target_formats',
-                                                                          []))))),
-                        'temporary_directory': config.get('ckan.dataingestor.temporary_directory', '/tmp/ckan_ingest'),
-                        'config_file_path': os.path.abspath(config['__file__'])}
-
+    p.implements(p.IConfigurer, inherit=False)
+    p.implements(p.ITemplateHelpers, inherit=False)
+    p.implements(p.IActions, inherit=True)
+    p.implements(p.IPackageController, inherit=True)
+    p.implements(p.IFacets, inherit=True)
 
     def dataset_facets(self, facets, package_type):
         if 'jurisdiction' in facets:
@@ -192,17 +68,17 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         # here = os.path.dirname(__file__)
         # rootdir = os.path.dirname(os.path.dirname(here))
 
-        tk.add_template_directory(config, 'templates')
-        tk.add_public_directory(config, 'theme/public')
-        tk.add_resource('theme/public', 'ckanext-datagovau')
-        tk.add_resource('public/scripts/vendor/jstree', 'jstree')
+        toolkit.add_template_directory(config, 'templates')
+        toolkit.add_public_directory(config, 'theme/public')
+        toolkit.add_resource('theme/public', 'ckanext-datagovau')
+        toolkit.add_resource('public/scripts/vendor/jstree', 'jstree')
 
     def get_helpers(self):
-        return {'get_user_datasets': get_user_datasets,
-                'get_user_datasets_public': get_user_datasets_public,
-                'get_ddg_site_statistics': get_ddg_site_statistics,
-                'get_resource_file_size': get_resource_file_size,
-                'blogfeed': blogfeed}
+        return {'get_user_datasets': helpers.get_user_datasets,
+                'get_user_datasets_public': helpers.get_user_datasets_public,
+                'get_ddg_site_statistics': helpers.get_ddg_site_statistics,
+                'get_resource_file_size': helpers.get_resource_file_size,
+                'blogfeed': helpers.blogfeed}
 
     # IActions
 
@@ -210,42 +86,9 @@ class DataGovAuPlugin(plugins.SingletonPlugin,
         return {'group_tree': action.group_tree,
                 'group_tree_section': action.group_tree_section}
 
-    # IDomainObjectModification
 
-    def notify(self, entity, operation=None):
-        if isinstance(entity, model.Resource):
-            # new event is sent, then a changed event.
-            log.warn('Operation of type {0} detected!'.format(operation))
-            # There is a NEW or CHANGED resource. We will send a task to celery
-            # to analyze the package
-
-            # Very ugly. Unfortunately, for resources UI deletions are registered as
-            # a 'change' and the entity itself does not have a 'state' associated with it.
-            # The best option I've found is to query for the ID and if it isn't found,
-            # it is then safe to assume it is deleted.
-            resource = None
-            try:
-                resource = tk.get_action('resource_show')({'ignore_auth': True, 'user': self.context['user']}, {'id': entity.id})
-            except tk.ObjectNotFound:
-                # There is a resource which is being deleted
-                celery.send_task(
-                    'datagovau.delete_children',
-                    args=[self.context, entity.as_dict()],
-                    task_id='{}-{}'.format(str(uuid.uuid4()), operation))
-
-            if resource is not None:
-                celery.send_task(
-                    'datagovau.spatial_ingest',
-                    args=[self.context, resource],
-                    task_id='{}-{}'.format(str(uuid.uuid4()), operation))
-                celery.send_task(
-                    'datagovau.zip_extract',
-                    args=[self.context, resource],
-                    task_id='{}-{}'.format(str(uuid.uuid4()), operation))
-
-
-class HierarchyForm(plugins.SingletonPlugin, DefaultOrganizationForm):
-    plugins.implements(plugins.IGroupForm, inherit=True)
+class HierarchyForm(p.SingletonPlugin, DefaultOrganizationForm):
+    p.implements(p.IGroupForm, inherit=True)
 
     # IGroupForm
 
@@ -264,3 +107,238 @@ class HierarchyForm(plugins.SingletonPlugin, DefaultOrganizationForm):
         else:
             c.allowable_parent_groups = model.Group.all(
                 group_type='organization')
+
+
+class ZipExtractorPlugin(p.SingletonPlugin):
+    p.implements(p.IConfigurable, inherit=True)
+    p.implements(p.IActions)
+    p.implements(p.IAuthFunctions)
+    p.implements(p.IResourceUrlChange)
+    p.implements(p.IDomainObjectModification, inherit=True)
+    p.implements(p.ITemplateHelpers, inherit=True)
+    p.implements(p.IRoutes, inherit=True)
+
+    legacy_mode = False
+    resource_show_action = None
+
+    def configure(self, config):
+        self.zip_context = helpers.get_zip_context(config)
+
+    def notify(self, entity, operation=None):
+        if not isinstance(entity, model.Resource):
+            return
+
+        context = self.zip_context
+        resource = entity.as_dict()
+
+        context['model'] = model
+        if entity.state == 'deleted' and helpers.is_zip_resource(resource) and resource.get('zip_delete_trigger', 'True') == 'True':
+            try:
+                log.debug('Deleting children of Zip Extracted resource {0}'.format(resource['id']))
+                toolkit.get_action('zipextractor_cleanup')(context, resource)
+            except toolkit.ValidationError, e:
+                # If zipextractor is offline want to catch error instead
+                # of raising otherwise resource save will fail with 500
+                log.critical(e)
+                pass
+        elif (not operation or operation == model.domain_object.DomainObjectOperation.new) and (resource.get('zip_extract', '') == 'True' or (context['auto_process'] and helpers.is_zip_resource(resource))):
+            # We have an active resource
+            if resource.get('zip_extract', '') == 'True':
+                if resource.get('zip_creator', None) is not None:
+                    context['user'] = resource['zip_creator']
+                try:
+                    task = toolkit.get_action('task_status_show')(
+                        {'ignore_auth': True}, {
+                            'entity_id': resource['id'],
+                            'task_type': 'zipextractor',
+                            'key': 'zipextractor'}
+                    )
+                    if task.get('state') == 'pending':
+                        # There already is a pending ZipExtractor submission,
+                        # skip this one ...
+                        log.debug(
+                            'Skipping Zip Extractor submission for '
+                            'resource {0}'.format(resource['id']))
+                        return
+                except toolkit.ObjectNotFound:
+                    pass
+
+                try:
+                    log.debug('Submitting resource {0} to Zip Extractor'.format(resource['id']))
+                    toolkit.get_action('zipextractor_submit')(context, resource)
+                except toolkit.ValidationError, e:
+                    log.error(e)
+                    pass
+            else:
+                # Auto-processing a Zip
+                try:
+                    dataset = toolkit.get_action('package_show')(context, {
+                        'id': resource['package_id'],
+                    })
+                except Exception, e:
+                    log.error(
+                        "{0} failed to retrieve package ID: {1} with error {2}, {3}".format(MSG_ZIP_PREFIX,
+                                                                                            resource[
+                                                                                                'package_id'],
+                                                                                            str(e),
+                                                                                            MSG_ZIP_SKIP_SUFFIX))
+                    return
+
+                log.info("{0} loaded dataset {1}.".format(MSG_ZIP_PREFIX, dataset['name']))
+
+                # Check org, package and last editor blacklists
+                blacklist_msg = helpers.check_blacklists(context, dataset)
+                if blacklist_msg != '':
+                    log.info("{0} {1}, {2}".format(MSG_ZIP_PREFIX, blacklist_msg, MSG_ZIP_SKIP_SUFFIX))
+                    return
+
+                # We auto_process zip file by updating the resource, which will re-trigger this method
+                resource['zip_extract'] = 'True'
+                resource['zip_creator'] = context['user']
+                try:
+                    toolkit.get_action('resource_update')(context, resource)
+                except toolkit.ValidationError, e:
+                    log.error(e)
+                    return
+
+    def before_map(self, m):
+        m.connect(
+            'resource_zipextract', '/resource_zipextract/{resource_id}',
+            controller='ckanext.datagovau.controller:ResourceZipController',
+            action='resource_zipextract', ckan_icon='cloud-upload')
+        return m
+
+    def get_actions(self):
+        return {'zipextractor_submit': action.zipextractor_submit,
+                'zipextractor_cleanup': action.zipextractor_cleanup,
+                'zipextractor_hook': action.zipextractor_hook,
+                'zipextractor_status': action.zipextractor_status}
+
+    def get_auth_functions(self):
+        return {'zipextractor_submit': auth.zipextractor_submit,
+                'zipextractor_cleanup': auth.zipextractor_cleanup,
+                'zipextractor_status': auth.zipextractor_status}
+
+    def get_helpers(self):
+        return {'zipextractor_status': helpers.zipextractor_status,
+                'zipextractor_status_description': helpers.status_description,
+                'zipextractor_is_zip_resource': helpers.is_zip_resource}
+
+
+class SpatialIngestorPlugin(p.SingletonPlugin):
+    p.implements(p.IConfigurable, inherit=True)
+    p.implements(p.IActions)
+    p.implements(p.IAuthFunctions)
+    p.implements(p.IResourceUrlChange)
+    p.implements(p.IDomainObjectModification, inherit=True)
+    p.implements(p.ITemplateHelpers, inherit=True)
+    p.implements(p.IRoutes, inherit=True)
+
+    legacy_mode = False
+    resource_show_action = None
+
+    def configure(self, config):
+        self.spatial_context = helpers.get_spatial_context(config)
+
+    def notify(self, entity, operation=None):
+        if not isinstance(entity, model.Resource):
+            return
+
+        context = self.spatial_context
+        resource = entity.as_dict()
+        if resource.get('spatial_parent', '') == 'True' or (context['auto_process'] and helpers.is_spatial_resource(resource)):
+            context['model'] = model
+
+            if entity.state == 'deleted' and resource.get('spatial_parent', '') == 'True':
+                # Check to see if we have a deleted, zip-extracted resource
+                try:
+                    log.debug('Deleting children of Spatial Ingested resource {0}'.format(resource['id']))
+                    toolkit.get_action('spatialingestor_cleanup')(context, resource)
+                except toolkit.ValidationError, e:
+                    log.error(e)
+                    pass
+            elif not operation or operation == model.domain_object.DomainObjectOperation.new:
+                if resource.get('spatial_parent', '') == 'True':
+                    if resource.get('spatial_creator', None) is not None:
+                        context['user'] = resource['spatial_creator']
+                    try:
+                        task = toolkit.get_action('task_status_show')(
+                            {'ignore_auth': True}, {
+                                'entity_id': resource['id'],
+                                'task_type': 'spatialingestor',
+                                'key': 'spatialingestor'}
+                        )
+                        if task.get('state') == 'pending':
+                            # There already is a pending ZipExtractor submission,
+                            # skip this one ...
+                            log.debug(
+                                'Skipping Spatial Ingestor submission for '
+                                'resource {0}'.format(resource['id']))
+                            return
+                    except toolkit.ObjectNotFound:
+                        pass
+
+                    try:
+                        log.debug('Submitting resource {0} to Spatial Ingestor'.format(resource['id']))
+                        toolkit.get_action('spatialingestor_submit')(context, resource)
+                    except toolkit.ValidationError, e:
+                        log.error(e)
+                        pass
+
+                else:
+                    try:
+                        dataset = toolkit.get_action('package_show')(context, {
+                            'id': resource['package_id'],
+                        })
+                    except Exception, e:
+                        log.error(
+                            "{0} failed to retrieve package ID: {1} with error {2}, {3}".format(MSG_SPATIAL_PREFIX,
+                                                                                                resource[
+                                                                                                    'package_id'],
+                                                                                                str(e),
+                                                                                                MSG_SPATIAL_SKIP_SUFFIX))
+                        return
+
+                    log.info("{0} loaded dataset {1}.".format(MSG_SPATIAL_PREFIX, dataset['name']))
+
+                    # Check org, package and last editor blacklists
+                    blacklist_msg = helpers.check_blacklists(context, dataset)
+                    if blacklist_msg != '':
+                        log.info("{0} {1}, {2}".format(MSG_SPATIAL_PREFIX, blacklist_msg, MSG_SPATIAL_SKIP_SUFFIX))
+                        return
+
+                    # We auto_process zip file by updating the resource, which will re-trigger this method
+                    resource['spatial_parent'] = 'True'
+                    resource['spatial_creator'] = context['user']
+                    try:
+                        toolkit.get_action('resource_update')(
+                            context, resource
+                        )
+                        toolkit.get_action('spatialingestor_submit')(
+                            context, resource
+                        )
+                    except toolkit.ValidationError, e:
+                        log.error(e)
+
+    def before_map(self, m):
+        m.connect(
+            'resource_spatialingest', '/resource_spatialingest/{resource_id}',
+            controller='ckanext.datagovau.controller:ResourceSpatialController',
+            action='resource_spatialingest', ckan_icon='cloud-upload')
+        return m
+
+    def get_actions(self):
+        return {'spatialingestor_submit': action.spatialingestor_submit,
+                'spatialingestor_cleanup': action.spatialingestor_cleanup,
+                'spatialingestor_hook': action.spatialingestor_hook,
+                'spatialingestor_status': action.spatialingestor_status}
+
+    def get_auth_functions(self):
+        return {'spatialingestor_submit': auth.spatialingestor_submit,
+                'spatialingestor_cleanup': auth.spatialingestor_cleanup,
+                'spatialingestor_status': auth.spatialingestor_status}
+
+    def get_helpers(self):
+        return {'spatialingestor_status': helpers.spatialingestor_status,
+                'spatialingestor_status_description': helpers.status_description,
+                'spatialingestor_is_spatial_resource': helpers.is_spatial_resource}
