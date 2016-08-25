@@ -295,7 +295,8 @@ try:
         pargs = ['ogr2ogr', '-f', 'PostgreSQL', "--config", "PG_USE_COPY", "YES",
                  'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' + db_settings[
                      'user'] + '\' password=\'' + db_settings['password'] + '\''
-            , table_name + ".kml", '-lco', 'GEOMETRY_NAME=geom', '-overwrite']
+            , table_name + ".kml", '-lco', 'GEOMETRY_NAME=geom', "-lco", "PRECISION=NO", '-nln', table_name, '-a_srs', nativeCRS,
+                 '-nlt', 'PROMOTE_TO_MULTI', '-overwrite']
         # pprint(pargs)
         p = Popen(pargs)  # , stdout=PIPE, stderr=PIPE)
         p.communicate()
