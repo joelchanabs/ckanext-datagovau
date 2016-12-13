@@ -17,3 +17,4 @@ HOME=/
 0    2  *  *  0 root /usr/lib/ckan/default/bin/paster --plugin=ckanext-ga-report loadanalytics latest --config=/etc/ckan/default/production.ini
 0    3  *  *  * root /usr/lib/ckan/default/src/ckanext-datagovau/admin/scripts/ckan-daily-maintenance >> /var/log/httpd/ckan_prod/ckan_prodbatch_daily_maintenance.log
 #0  */3  *  *  * root /usr/lib/ckan/default/src/ckanext-datagovau/admin/scripts/ckan-trihourly-maintenance
+*/5  *  *  *  * root /opt/aws/aws-scripts-mon/cloud-watch-update
