@@ -51,12 +51,12 @@
         ('search', _('Datasets')),
         ('organizations_index', _('Organizations')),
         ('about', _('About')),
-        ('stats', _('Site Statistics'))
+        ('stats', _('Site Statistics')),
+        ('datarequests_index', _('Request Data') + h.get_open_datarequests_badge())
         ) }}
 
         <li><a href="/showcase">Use Cases</a></li>
         <li><a href="http://nationalmap.gov.au">National Map</a></li>
-        <li><a href="https://datagovau.ideascale.com/">Request Data</a></li>
         <li><a href="https://toolkit.data.gov.au/">Toolkit</a></li>
         {% endblock %}
     </ul>
