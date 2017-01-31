@@ -1,13 +1,9 @@
-import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as toolkit
 from ckan.lib.plugins import DefaultOrganizationForm
 
 import ckanext.datagovau.helpers as helpers
 import ckanext.datagovau.logic.action as action
-import ckanext.datagovau.logic.auth as auth
-from ckanext.datagovau.helpers import log, MSG_SPATIAL_PREFIX, MSG_SPATIAL_SKIP_SUFFIX, MSG_ZIP_PREFIX, \
-    MSG_ZIP_SKIP_SUFFIX
 
 class DataGovAuPlugin(p.SingletonPlugin,
                       toolkit.DefaultDatasetForm):

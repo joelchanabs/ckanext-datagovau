@@ -3,23 +3,15 @@ import os
 import time
 
 import ckan.lib as lib
-import ckan.lib.cli as cli
 import ckan.logic as logic
 import ckan.model as model
 import ckan.plugins.toolkit as toolkit
 import ckanext.datastore.db as datastore_db
 import feedparser
 from ckan.lib import uploader, formatters
-from ckanext.datapusher.plugin import DEFAULT_FORMATS as DATAPUSHER_DEFAULT_FORMATS
 from pylons import config
 
 log = logging.getLogger('ckanext_datagovau')
-
-MSG_SPATIAL_PREFIX = 'Spatial Ingestor:'
-MSG_SPATIAL_SKIP_SUFFIX = 'skipping spatial ingestion.'
-MSG_ZIP_PREFIX = 'Zip Extractor:'
-MSG_ZIP_SKIP_SUFFIX = 'skipping Zip extraction.'
-
 
 def get_user_datasets(user_dict):
     # Need to test packages carefully to make sure they haven't been purged from the DB (like what happens

@@ -1,16 +1,7 @@
-import datetime
-import json
-
 import ckan.lib.navl.dictization_functions
 import ckan.logic as logic
 import ckan.plugins.toolkit as toolkit
-from ckan.common import _
-from ckan.lib.celery_app import celery
-from ckan.model.types import make_uuid
-from dateutil.parser import parse as parse_date
 
-import ckanext.datagovau.logic.schema as ddgschema
-from ckanext.datagovau.helpers import log, get_spatial_context, get_zip_context
 from ckanext.datagovau.model import GroupTreeNode
 
 _get_or_bust = logic.get_or_bust
