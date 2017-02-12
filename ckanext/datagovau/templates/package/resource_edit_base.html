@@ -4,11 +4,5 @@
   {% if 'datapusher' in g.plugins %}
     {{ h.build_nav_icon('resource_data', _('DataStore'), id=pkg.name, resource_id=res.id) }}
   {% endif %}
-  {% if 'zipextractor' in g.plugins and h.zipextractor_is_zip_resource(res) %}
-    {{ h.build_nav_icon('resource_zipextract', _('Zip Extract'), resource_id=res.id) }}
-  {% endif %}
-  {% if 'spatialingestor' in g.plugins and h.spatialingestor_is_spatial_resource(res) %}
-    {{ h.build_nav_icon('resource_spatialingest', _('Spatial Ingest'), resource_id=res.id) }}
-  {% endif %}
   {{ h.build_nav_icon('views', _('Views'), id=pkg.name, resource_id=res.id) }}
 {% endblock %}

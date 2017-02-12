@@ -23,18 +23,5 @@ setup(
         [ckan.plugins]
 		datagovau = ckanext.datagovau.plugin:DataGovAuPlugin
 		datagovau_hierarchy = ckanext.datagovau.plugin:HierarchyForm
-		zipextractor = ckanext.datagovau.plugin:ZipExtractorPlugin
-		spatialingestor = ckanext.datagovau.plugin:SpatialIngestorPlugin
-
-		[ckan.celery_task]
-        tasks = ckanext.datagovau.celery_import:task_imports
-
-        [paste.paster_command]
-        purgezip = ckanext.datagovau.commands:PurgeZip
-        purgespatial = ckanext.datagovau.commands:PurgeSpatial
-        rebuildzip = ckanext.datagovau.commands:RebuildZip
-        rebuildspatial = ckanext.datagovau.commands:RebuildSpatial
-        cleandatastore = ckanext.datagovau.commands:CleanDatastore
-        purgelegacyspatial = ckanext.datagovau.commands:PurgeLegacySpatial
 	""",
 )
