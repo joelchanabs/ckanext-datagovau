@@ -23,5 +23,8 @@ setup(
         [ckan.plugins]
 		datagovau = ckanext.datagovau.plugin:DataGovAuPlugin
 		datagovau_hierarchy = ckanext.datagovau.plugin:HierarchyForm
+
+		[paste.paster_command]
+		purgelegacyspatial = ckanext.datagovau.commands:PurgeLegacySpatial
 	""",
 )
