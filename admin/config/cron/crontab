@@ -14,6 +14,7 @@ HOME=/
 # |  |  |  |  |
 # *  *  *  *  * user-name command to be executed
 */15 *  *  *  * root /usr/lib/ckan/dga/bin/paster --plugin=ckanext-harvest harvester run --config=/etc/ckan/dga/harvester.ini
+0    21 *  *  6 root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/ckan-weekly-maintenance >> /var/log/httpd/ckan_prod/ckan_prodbatch_weekly_maintenance.log
 0    3  *  *  * root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/ckan-daily-maintenance >> /var/log/httpd/ckan_prod/ckan_prodbatch_daily_maintenance.log
 */5  *  *  *  * root /opt/aws/aws-scripts-mon/cloud-watch-update
 0  */3  *  *  * root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/ckan-trihourly-maintenance.sh
