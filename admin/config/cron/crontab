@@ -13,7 +13,7 @@ HOME=/
 # |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
 # |  |  |  |  |
 # *  *  *  *  * user-name command to be executed
-*/15 *  *  *  * root /usr/lib/ckan/default/bin/paster --plugin=ckanext-harvest harvester run --config=/etc/ckan/default/harvester.ini
-0    3  *  *  * root /usr/lib/ckan/default/src/ckanext-datagovau/admin/scripts/ckan-daily-maintenance >> /var/log/httpd/ckan_prod/ckan_prodbatch_daily_maintenance.log
+*/15 *  *  *  * root /usr/lib/ckan/dga/bin/paster --plugin=ckanext-harvest harvester run --config=/etc/ckan/dga/harvester.ini
+0    3  *  *  * root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/ckan-daily-maintenance >> /var/log/httpd/ckan_prod/ckan_prodbatch_daily_maintenance.log
 */5  *  *  *  * root /opt/aws/aws-scripts-mon/cloud-watch-update
-0  */3  *  *  * root /usr/lib/ckan/default/src/ckanext-datagovau/admin/scripts/ckan-trihourly-maintenance.sh
+0  */3  *  *  * root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/ckan-trihourly-maintenance.sh
