@@ -57,7 +57,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         active_datastore_tablenames = set()
         active_geoserver_workspaces = set()
 
-
+        dry_run = (len(self.args) == 1 and self.args[0].lower() == "dry-run")
         clean_all = (len(self.args) == 1 and self.args[0].lower() == "clean-all")
         clean_dbs = clean_all or (len(self.args) == 1 and self.args[0].lower() == "clean-dbs-only")
         clean_geoserver = clean_all or (len(self.args) == 1 and self.args[0].lower() == "clean-geoserver-only")
@@ -74,7 +74,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
             sys.stdout.write("\n         clean-dbs-only: Run script to clean out only unused DB tables")
             sys.stdout.write("\n         clean-geoserver-only: Run script to clean out only unused Geoserver workspaces")
             sys.stdout.write("\n         clean-ckan-only: Run script to clean out only unused CKAN resources")
-            sys.stdout.write("\nNote: Supply no command or anything other than the above will have the system default to 'help'")
+            sys.stdout.write("\nNote: Supply no command or anything other than the above will have the system default to 'help'\n")
             sys.exit(0)
 
         if clean_all:
