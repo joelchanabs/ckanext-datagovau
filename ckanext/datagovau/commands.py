@@ -57,6 +57,8 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         active_datastore_tablenames = set()
         active_geoserver_workspaces = set()
 
+        datastore_postgis_same = config.get('ckanext.datagovau.datastore.url') == config.get('ckanext.datagovau.postgis.url')
+
         dry_run = (len(self.args) == 1 and self.args[0].lower() == "dry-run")
         clean_all = (len(self.args) == 1 and self.args[0].lower() == "clean-all")
         clean_dbs = clean_all or (len(self.args) == 1 and self.args[0].lower() == "clean-dbs-only")
@@ -110,7 +112,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         sys.stdout.write(" Found {0} Tables".format(len(datastore_tables)))
 
         # Get postGIS tables
-        if config.get('ckan.datastore_url') == config.get('ckan.postgis_url'):
+        if datastore_postgis_same:
             postgis_tables = datastore_tables
         else:
             sys.stdout.write("\n----------")
@@ -283,7 +285,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
 
         postgis_tables_to_drop = []
         sys.stdout.write("\n----------")
-        if config.get('ckan.datastore_url') == config.get('ckan.postgis_url'):
+        if datastore_postgis_same:
             sys.stdout.write("\nFinding Active Geoserver Feature Types Without A PostGIS Table...")
             geoserver_featuretypes_without_table = active_geoserver_featuretypes - set(datastore_tables)
             sys.stdout.write(" Found {0} Feature Types".format(len(geoserver_featuretypes_without_table)))
@@ -328,7 +330,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         connection.commit()
         connection.close()
 
-        if config.get('ckan.datastore_url') != config.get('ckan.postgis_url'):
+        if not datastore_postgis_same:
             sys.stdout.write("\n----------")
             sys.stdout.write(
                 "\nTables To Be Dropped From PostGIS DB ({0} Out Of {1}):".format(len(postgis_tables_to_drop),
