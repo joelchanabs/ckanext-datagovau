@@ -57,7 +57,37 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         active_datastore_tablenames = set()
         active_geoserver_workspaces = set()
 
-        not_dry_run = not (len(self.args) == 1 and self.args[0].lower() == "dry-run")
+
+        clean_all = (len(self.args) == 1 and self.args[0].lower() == "clean-all")
+        clean_dbs = clean_all or (len(self.args) == 1 and self.args[0].lower() == "clean-dbs-only")
+        clean_geoserver = clean_all or (len(self.args) == 1 and self.args[0].lower() == "clean-geoserver-only")
+        clean_ckan_resources = clean_all or (len(self.args) == 1 and self.args[0].lower() == "clean-ckan-only")
+
+        sys.stdout.write("\n----------")
+        if all([not x for x in [dry_run, clean_all, clean_dbs, clean_geoserver, clean_ckan_resources]]):
+            sys.stdout.write("\nUsage:")
+            sys.stdout.write("\n         paster --plugin=ckanext-datagovau cleanupdatastoregeoserver <command> --config=/path/to/config.ini")
+            sys.stdout.write("\nCommands:")
+            sys.stdout.write("\n         help: This message")
+            sys.stdout.write("\n         dry-run: Run script to generate a command line report with no actions taken")
+            sys.stdout.write("\n         clean-all: Run script to clean out unused Geoserver workspaces, DB tables and CKAN Resources")
+            sys.stdout.write("\n         clean-dbs-only: Run script to clean out only unused DB tables")
+            sys.stdout.write("\n         clean-geoserver-only: Run script to clean out only unused Geoserver workspaces")
+            sys.stdout.write("\n         clean-ckan-only: Run script to clean out only unused CKAN resources")
+            sys.stdout.write("\nNote: Supply no command or anything other than the above will have the system default to 'help'")
+            sys.exit(0)
+
+        if clean_all:
+            sys.stdout.write("\nRunning in 'clean-all' Mode - Will Delete DB Tables, Geoserver Workspaces and CKAN Resources")
+        elif clean_dbs:
+            sys.stdout.write("\nRunning in 'clean-dbs-only' Mode - Will Delete DB Tables Only")
+        elif clean_geoserver:
+            sys.stdout.write("\nRunning in 'clean-geoserver-only' Mode - Will Delete Geoserver Workspaces Only")
+        elif clean_ckan_resources:
+            sys.stdout.write("\nRunning in 'clean-ckan-only' Mode - Will Delete CKAN Resources Only")
+        else:
+            sys.stdout.write("\nRunning in 'dry-run' Mode - Will Generate A Report Only; No Assets Will Be Deleted")
+
 
         # Get datastore tables
         sys.stdout.write("\n----------")
@@ -200,7 +230,8 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                         sys.stdout.write("\nCorrecting 'datastore_active' Value For {0}".format(res_dict['id']))
                         try:
                             res_dict['datastore_active'] = new_label_bool
-                            toolkit.get_action('resource_update')({'ignore_auth': True}, res_dict)
+                            if clean_ckan_resources:
+                                toolkit.get_action('resource_update')({'ignore_auth': True}, res_dict)
                             active_datastore_tablenames.add(res_dict['id'])
                         except:
                             if new_label_bool:
@@ -292,7 +323,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         cursor, connection = get_db_cursor(datastore_info)
         for table_name in datastore_tables_to_drop:
             sys.stdout.write("\nDropping Table {0}".format(table_name))
-            if not_dry_run:
+            if clean_dbs:
                 cursor.execute("""DROP TABLE "{0}" CASCADE""".format(table_name))
         connection.commit()
         connection.close()
@@ -305,7 +336,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
             cursor, connection = get_db_cursor(postgis_info)
             for table_name in postgis_tables_to_drop:
                 sys.stdout.write("\nDropping Table {0}".format(table_name))
-                if not_dry_run:
+                if clean_dbs:
                     cursor.execute("""DROP TABLE "{0}" CASCADE""".format(table_name))
             connection.commit()
             connection.close()
@@ -315,7 +346,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                                                                                          len(geoserver_workspaces)))
         for ws_name in workspaces_to_delete:
             sys.stdout.write("\nRecursively Deleting Workspace {0}".format(ws_name))
-            if not_dry_run:
+            if clean_geoserver:
                 requests.delete(geoserver_url + '/rest/workspaces/' + ws_name + '?recurse=true&quietOnNotFound',
                                 auth=geoserver_credentials)
 
@@ -323,7 +354,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         sys.stdout.write("\nResources To Be Deleted From CKAN ({0}):".format(len(resources_to_delete)))
         for res_id in resources_to_delete:
             sys.stdout.write("\nDeleting Resource {0}".format(res_id))
-            if not_dry_run:
+            if clean_ckan_resources:
                 try:
                     toolkit.get_action('resource_delete')({'ignore_auth': True}, {'id': res_id})
                 except:

@@ -25,6 +25,6 @@ setup(
 		datagovau_hierarchy = ckanext.datagovau.plugin:HierarchyForm
 
 		[paste.paster_command]
-		purgelegacyspatial = ckanext.datagovau.commands:PurgeLegacySpatial
+		cleanupdatastoregeoserver = ckanext.datagovau.commands:ReconcileGeoserverAndDatastore
 	""",
 )
