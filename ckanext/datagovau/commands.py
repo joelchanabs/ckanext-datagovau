@@ -349,7 +349,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         for ws_name in workspaces_to_delete:
             sys.stdout.write("\nRecursively Deleting Workspace {0}".format(ws_name))
             if clean_geoserver:
-                requests.delete(geoserver_url + '/rest/workspaces/' + ws_name + '?recurse=true&quietOnNotFound',
+                requests.delete(geoserver_url + '/rest/workspaces/' + str(ws_name) + '?recurse=true&quietOnNotFound',
                                 auth=geoserver_credentials)
 
         sys.stdout.write("\n----------")
