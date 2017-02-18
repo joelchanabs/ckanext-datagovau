@@ -9,24 +9,28 @@ spatial ingestor for data.gov.au
 1.3 24/9/2014 grid raster support
 1.4 16/1/2015 unzip files into flat structure, record wms layer name for future expansion
 '''
-import ckanapi  # https://github.com/open-data/ckanapi
-import errno, os, shutil, sys, glob
-from pprint import pprint
-from email.mime.text import MIMEText
-import subprocess
-from subprocess import Popen, PIPE
-import tempfile
-import smtplib
-from zipfile import ZipFile
-from datetime import datetime
 import calendar
-import urllib
+import errno
+import glob
 import json
+import os
+import shutil
+import smtplib
+import subprocess
+import sys
+import tempfile
+import urllib
+from datetime import datetime
+from email.mime.text import MIMEText
+from pprint import pprint
+from subprocess import Popen
+from zipfile import ZipFile
+
+import ckanapi  # https://github.com/open-data/ckanapi
+import lxml.etree as et
 import psycopg2
 import requests
 from dateutil import parser
-import lxml.etree as et
-
 from osgeo import osr
 
 geoserver_addr = "http://localhost:8080/geoserver/"
@@ -64,13 +68,16 @@ def email(subject, body):
     s.sendmail(msg["From"], [msg["To"]], msg.as_string())
     s.quit()
 
+
 tempdir = None
+
 
 def clean_temp():
     try:
         shutil.rmtree(tempdir)
     except:
         pass
+
 
 def success(msg):
     print "Completed!"
@@ -180,7 +187,8 @@ try:
     # email("geodata processing started for "+dataset['title'], "Data modified: " + str(parser.parse(data_modified_date)) + "  Geoserver last updated: " + str(parser.parse(geoserver_modified_date)))
     else:
         email("geodata processing started for " + dataset['title'], "Data modified: " + str(
-            parser.parse(data_modified_date)) + " New Dataset" + "\n" + "https://data.gov.au/api/action/package_show?id=" +
+            parser.parse(
+                data_modified_date)) + " New Dataset" + "\n" + "https://data.gov.au/api/action/package_show?id=" +
               dataset['id'] + "\n" + "https://data.gov.au/dataset/" + dataset['name'])
 
     msg = dataset['title'] + "\n" + "https://data.gov.au/api/action/package_show?id=" + dataset[
@@ -247,7 +255,8 @@ try:
             # if wyndham then GDA_1994_MGA_Zone_55 EPSG:28355
             nativeCRS = "EPSG:4326"
         pargs = ['ogr2ogr', '-f', 'PostgreSQL', "--config", "PG_USE_COPY", "YES",
-                 'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' + db_settings[
+                 'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' +
+                 db_settings[
                      'user'] + '\' password=\'' + db_settings['password'] + '\''
             , tempdir, '-lco', 'GEOMETRY_NAME=geom', "-lco", "PRECISION=NO", '-nln', table_name, '-a_srs', nativeCRS,
                  '-nlt', 'PROMOTE_TO_MULTI', '-overwrite']
@@ -302,9 +311,11 @@ try:
             ofile.write(et.tostring(tree))
         print "converting to pgsql " + table_name + ".kml"
         pargs = ['ogr2ogr', '-f', 'PostgreSQL', "--config", "PG_USE_COPY", "YES",
-                 'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' + db_settings[
+                 'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' +
+                 db_settings[
                      'user'] + '\' password=\'' + db_settings['password'] + '\''
-            , table_name + ".kml", '-lco', 'GEOMETRY_NAME=geom', "-lco", "PRECISION=NO", '-nln', table_name, '-a_srs', nativeCRS,
+            , table_name + ".kml", '-lco', 'GEOMETRY_NAME=geom', "-lco", "PRECISION=NO", '-nln', table_name, '-a_srs',
+                 nativeCRS,
                  '-nlt', 'PROMOTE_TO_MULTI', '-overwrite']
         # pprint(pargs)
         p = Popen(pargs)  # , stdout=PIPE, stderr=PIPE)
@@ -323,7 +334,8 @@ try:
         # chown -R tomcat6:tomcat6 /opt/geoserver/data/
 
         pargs = ['ogr2ogr', '-f', 'PostgreSQL', "--config", "PG_USE_COPY", "YES",
-                 'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' + db_settings[
+                 'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' +
+                 db_settings[
                      'user'] + '\' password=\'' + db_settings['password'] + '\''
             , table_name + ".kml", '-lco', 'GEOMETRY_NAME=geom']
         pprint(pargs)
@@ -382,7 +394,8 @@ try:
     layer_name = 'ckan_' + table_name
     ftdata = {'featureType': {'name': layer_name, 'nativeName': table_name, 'title': dataset['title']}}
     if bbox:
-        (minx, miny, maxx, maxy) = bbox.replace("BOX", "").replace("(", "").replace(")", "").replace(",", " ").split(" ")
+        (minx, miny, maxx, maxy) = bbox.replace("BOX", "").replace("(", "").replace(")", "").replace(",", " ").split(
+            " ")
         bbox_obj = {'minx': minx, 'maxx': maxx, 'miny': miny, 'maxy': maxy}
         (llminx, llminy, llmaxx, llmaxy) = latlngbbox.replace("BOX", "").replace("(", "").replace(")", "").replace(",",
                                                                                                                    " ").split(
@@ -410,7 +423,8 @@ try:
     print geoserver_addr + 'rest/workspaces/' + workspace + '/datastores/' + datastore + "/featuretypes"
     print ftdata
     r = requests.post(geoserver_addr + 'rest/workspaces/' + workspace + '/datastores/' + datastore + "/featuretypes",
-                      data=ftdata, headers={'Content-Type': 'application/json'}, auth=(geoserver_user, geoserver_passwd))
+                      data=ftdata, headers={'Content-Type': 'application/json'},
+                      auth=(geoserver_user, geoserver_passwd))
     pprint(r)
     # generate wms/wfs api links, kml, png resources and add to package
 
@@ -425,13 +439,15 @@ try:
             'miny'] + "," + bbox_obj['maxx'] + "," + bbox_obj['maxy'] + "&width=512&height=512&format=" + urllib.quote(
             format)
         if format == "image/png" and format not in existing_formats:
-            ckan.call_action('resource_create', {"package_id": dataset['id'], "name": dataset['title'] + " Preview Image",
-                                                 "description": "View overview image of this dataset", "format": format,
-                                                 "url": url, "last_modified": datetime.now().isoformat()})
+            ckan.call_action('resource_create',
+                             {"package_id": dataset['id'], "name": dataset['title'] + " Preview Image",
+                              "description": "View overview image of this dataset", "format": format,
+                              "url": url, "last_modified": datetime.now().isoformat()})
         if format == "kml" and format not in existing_formats:
             ckan.call_action('resource_create', {"package_id": dataset['id'], "name": dataset['title'] + " KML",
                                                  "description": "View a map of this dataset in web and desktop spatial data tools including Google Earth",
-                                                 "format": format, "url": url, "last_modified": datetime.now().isoformat()})
+                                                 "format": format, "url": url,
+                                                 "last_modified": datetime.now().isoformat()})
     if "wms" not in existing_formats:
         ckan.call_action('resource_create',
                          {"package_id": dataset['id'], "name": dataset['title'] + " - Preview this Dataset (WMS)",
@@ -452,11 +468,13 @@ try:
         if format in ["json", "geojson"] and not any([x in existing_formats for x in ["json", "geojson"]]):
             ckan.call_action('resource_create', {"package_id": dataset['id'], "name": dataset['title'] + " GeoJSON",
                                                  "description": "For use in web-based data visualisation of this collection",
-                                                 "format": "geojson", "url": url, "last_modified": datetime.now().isoformat()})
+                                                 "format": "geojson", "url": url,
+                                                 "last_modified": datetime.now().isoformat()})
         if format == "csv" and format not in existing_formats:
             ckan.call_action('resource_create', {"package_id": dataset['id'], "name": dataset['title'] + " CSV",
                                                  "description": "For summary of the objects/data in this collection",
-                                                 "format": format, "url": url, "last_modified": datetime.now().isoformat()})
+                                                 "format": format, "url": url,
+                                                 "last_modified": datetime.now().isoformat()})
 
     success(msg)
 except Exception, e:
