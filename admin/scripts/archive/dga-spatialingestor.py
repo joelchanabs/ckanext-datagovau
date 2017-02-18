@@ -64,16 +64,25 @@ def email(subject, body):
     s.sendmail(msg["From"], [msg["To"]], msg.as_string())
     s.quit()
 
+tempdir = None
+
+def clean_temp():
+    try:
+        shutil.rmtree(tempdir)
+    except:
+        pass
 
 def success(msg):
     print "Completed!"
     email("geodata success", msg)
+    clean_temp()
     sys.exit(errno.EACCES)
 
 
 def failure(msg):
     print "ERROR -" + msg
     email("geodata error", msg)
+    clean_temp()
     sys.exit(errno.EACCES)
 
 
@@ -108,8 +117,8 @@ else:
 
 ckan = ckanapi.RemoteCKAN(address=api_url, apikey=api_key)
 print dataset_id
+
 try:
-    tempdir = None
     dataset = ckan.action.package_show(id=dataset_id)
     print "loaded dataset " + dataset['name']
 
@@ -449,14 +458,7 @@ try:
                                                  "description": "For summary of the objects/data in this collection",
                                                  "format": format, "url": url, "last_modified": datetime.now().isoformat()})
 
-    # delete tempdir
-    shutil.rmtree(tempdir)
     success(msg)
 except Exception, e:
-    if tempdir is not None:
-        try:
-            shutil.rmtree(tempdir)
-        except:
-            pass
     print "failed to ingest {0} with error {1}".format(dataset_id, str(e))
-    sys.exit(0)
+    clean_temp()
