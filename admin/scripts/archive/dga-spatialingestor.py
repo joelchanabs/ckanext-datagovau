@@ -60,13 +60,13 @@ def email(subject, body):
     # envelope header.
     # p = Popen(["/usr/sbin/sendmail", "-t"], stdin=PIPE)
     # p.communicate(msg.as_string())
-    s = smtplib.SMTP('smtp.gmail.com', 587)
-    s.ehlo()
-    s.starttls()
-    s.ehlo
-    s.login('datagovau@gmail.com', '3P4ELm9kjNAmKUL')
-    s.sendmail(msg["From"], [msg["To"]], msg.as_string())
-    s.quit()
+    # s = smtplib.SMTP('smtp.gmail.com', 587)
+    # s.ehlo()
+    # s.starttls()
+    # s.ehlo
+    # s.login('datagovau@gmail.com', '3P4ELm9kjNAmKUL')
+    # s.sendmail(msg["From"], [msg["To"]], msg.as_string())
+    # s.quit()
 
 
 tempdir = None
