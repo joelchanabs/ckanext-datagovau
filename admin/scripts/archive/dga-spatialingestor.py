@@ -60,13 +60,13 @@ def email(subject, body):
     # envelope header.
     # p = Popen(["/usr/sbin/sendmail", "-t"], stdin=PIPE)
     # p.communicate(msg.as_string())
-    s = smtplib.SMTP('smtp.gmail.com', 587)
-    s.ehlo()
-    s.starttls()
-    s.ehlo
-    s.login('datagovau@gmail.com', '3P4ELm9kjNAmKUL')
-    s.sendmail(msg["From"], [msg["To"]], msg.as_string())
-    s.quit()
+    # s = smtplib.SMTP('smtp.gmail.com', 587)
+    # s.ehlo()
+    # s.starttls()
+    # s.ehlo
+    # s.login('datagovau@gmail.com', '3P4ELm9kjNAmKUL')
+    # s.sendmail(msg["From"], [msg["To"]], msg.as_string())
+    # s.quit()
 
 
 tempdir = None
@@ -463,17 +463,13 @@ try:
                          {"package_id": dataset['id'], "name": dataset['title'] + " Web Feature Service API Link",
                           "description": "WFS API Link for use in Desktop GIS tools", "format": "wfs",
                           "url": ws_addr + "wfs", "wfs_layer": layer_name, "last_modified": datetime.now().isoformat()})
-    for format in ['csv', 'json', 'geojson']:
+    # SXTPDFINXZCB-292 - Remove CSV creation, as this causes a number of issues with the datapusher
+    for format in ['json', 'geojson']:
         url = ws_addr + "wfs?request=GetFeature&typeName=" + layer_name + "&outputFormat=" + urllib.quote(format)
         if format in ["json", "geojson"] and not any([x in existing_formats for x in ["json", "geojson"]]):
             ckan.call_action('resource_create', {"package_id": dataset['id'], "name": dataset['title'] + " GeoJSON",
                                                  "description": "For use in web-based data visualisation of this collection",
                                                  "format": "geojson", "url": url,
-                                                 "last_modified": datetime.now().isoformat()})
-        if format == "csv" and format not in existing_formats:
-            ckan.call_action('resource_create', {"package_id": dataset['id'], "name": dataset['title'] + " CSV",
-                                                 "description": "For summary of the objects/data in this collection",
-                                                 "format": format, "url": url,
                                                  "last_modified": datetime.now().isoformat()})
 
     success(msg)
