@@ -57,7 +57,8 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         active_datastore_tablenames = set()
         active_geoserver_workspaces = set()
 
-        datastore_postgis_same = config.get('ckanext.datagovau.datastore.url') == config.get('ckanext.datagovau.postgis.url')
+        datastore_postgis_same = config.get('ckanext.datagovau.datastore.url') == config.get(
+            'ckanext.datagovau.postgis.url')
 
         dry_run = (len(self.args) == 1 and self.args[0].lower() == "dry-run")
         clean_all = (len(self.args) == 1 and self.args[0].lower() == "clean-all")
@@ -68,19 +69,24 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         sys.stdout.write("\n----------")
         if all([not x for x in [dry_run, clean_all, clean_dbs, clean_geoserver, clean_ckan_resources]]):
             sys.stdout.write("\nUsage:")
-            sys.stdout.write("\n         paster --plugin=ckanext-datagovau cleanupdatastoregeoserver <command> --config=/path/to/config.ini")
+            sys.stdout.write(
+                "\n         paster --plugin=ckanext-datagovau cleanupdatastoregeoserver <command> --config=/path/to/config.ini")
             sys.stdout.write("\nCommands:")
             sys.stdout.write("\n         help: This message")
             sys.stdout.write("\n         dry-run: Run script to generate a command line report with no actions taken")
-            sys.stdout.write("\n         clean-all: Run script to clean out unused Geoserver workspaces, DB tables and CKAN Resources")
+            sys.stdout.write(
+                "\n         clean-all: Run script to clean out unused Geoserver workspaces, DB tables and CKAN Resources")
             sys.stdout.write("\n         clean-dbs-only: Run script to clean out only unused DB tables")
-            sys.stdout.write("\n         clean-geoserver-only: Run script to clean out only unused Geoserver workspaces")
+            sys.stdout.write(
+                "\n         clean-geoserver-only: Run script to clean out only unused Geoserver workspaces")
             sys.stdout.write("\n         clean-ckan-only: Run script to clean out only unused CKAN resources")
-            sys.stdout.write("\nNote: Supply no command or anything other than the above will have the system default to 'help'\n")
+            sys.stdout.write(
+                "\nNote: Supply no command or anything other than the above will have the system default to 'help'\n")
             sys.exit(0)
 
         if clean_all:
-            sys.stdout.write("\nRunning in 'clean-all' Mode - Will Delete DB Tables, Geoserver Workspaces and CKAN Resources")
+            sys.stdout.write(
+                "\nRunning in 'clean-all' Mode - Will Delete DB Tables, Geoserver Workspaces and CKAN Resources")
         elif clean_dbs:
             sys.stdout.write("\nRunning in 'clean-dbs-only' Mode - Will Delete DB Tables Only")
         elif clean_geoserver:
@@ -89,7 +95,6 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
             sys.stdout.write("\nRunning in 'clean-ckan-only' Mode - Will Delete CKAN Resources Only")
         else:
             sys.stdout.write("\nRunning in 'dry-run' Mode - Will Generate A Report Only; No Assets Will Be Deleted")
-
 
         # Get datastore tables
         sys.stdout.write("\n----------")
@@ -209,7 +214,8 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                     re_res = re.search('.*data\.gov\.au\/geoserver\/(.*)\/.*', res_dict['url'])
                     if re_res:
                         ws_name = re_res.group(1)
-                        if (ws_name in ws_without_table) or not (ws_name in geoserver_workspaces):
+                        if (ws_name in ws_without_table) or not (ws_name in geoserver_workspaces) or (
+                            'outputformat=csv' in res_dict.get('url', '').lower()):
                             resources_to_delete.add(res_dict['id'])
                             res_delete = True
                         elif ws_name in filestore_workspaces:
