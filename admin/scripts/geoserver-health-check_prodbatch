@@ -1,0 +1,5 @@
+#!/bin/bash
+result=`wget http://data.gov.au/geoserver/web/wicket/bookmarkable/org.geoserver.web.AboutGeoServerPage --timeout 30 -O - 2>/dev/null | grep "About GeoServer"`
+if [[ -z "${result// }" ]]; then
+        service tomcat restart
+fi
