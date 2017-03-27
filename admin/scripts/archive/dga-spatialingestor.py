@@ -120,7 +120,7 @@ if len(sys.argv) != 9:
     print "spatial ingester. command line: postgis_url api_url api_key geoserver_addr geoserver_user geoserver_passwd dataset_id tmp_dir"
     sys.exit(errno.EACCES)
 else:
-    (path, db_settings_json, api_url, api_key, geoserver_addr, geoserver_user, geoserver_passwd, dataset_id, tmp_dir_base) = sys.argv
+    (path, db_settings_json, api_url, api_key, geoserver_addr, geoserver_user, geoserver_passwd, dataset_id, temp_dir_base) = sys.argv
     db_settings = json.loads(db_settings_json)
 
 ckan = ckanapi.RemoteCKAN(address=api_url, apikey=api_key)
