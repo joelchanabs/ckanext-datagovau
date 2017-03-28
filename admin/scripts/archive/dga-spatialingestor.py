@@ -36,6 +36,7 @@ from osgeo import osr
 geoserver_addr = "http://localhost:8080/geoserver/"
 geoserver_user = "admin"
 geoserver_passwd = ""
+temp_dir_base = "/tmp"
 email_addr = "greg.vonnessi@linkdigital.com.au"  # , data.gov@finance.gov.au"
 omitted_orgs = ['australianantarcticdivision',
                 'australian-institute-of-marine-science',
@@ -115,11 +116,11 @@ def parse_date(date_str):
         return None
 
 
-if len(sys.argv) != 8:
-    print "spatial ingester. command line: postgis_url api_url api_key geoserver_addr geoserver_user geoserver_passwd dataset_id"
+if len(sys.argv) != 9:
+    print "spatial ingester. command line: postgis_url api_url api_key geoserver_addr geoserver_user geoserver_passwd dataset_id tmp_dir"
     sys.exit(errno.EACCES)
 else:
-    (path, db_settings_json, api_url, api_key, geoserver_addr, geoserver_user, geoserver_passwd, dataset_id) = sys.argv
+    (path, db_settings_json, api_url, api_key, geoserver_addr, geoserver_user, geoserver_passwd, dataset_id, temp_dir_base) = sys.argv
     db_settings = json.loads(db_settings_json)
 
 ckan = ckanapi.RemoteCKAN(address=api_url, apikey=api_key)
@@ -202,7 +203,7 @@ try:
     conn.close()
 
     # download resource to tmpfile
-    tempdir = tempfile.mkdtemp(dataset['id'])
+    tempdir = tempfile.mkdtemp(suffix=dataset['id'], dir=temp_dir_base)
     os.chdir(tempdir)
     print tempdir + " created"
     psql = True
