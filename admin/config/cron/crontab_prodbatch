@@ -18,5 +18,5 @@ HOME=/
 0    3  *  *  * root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/ckan-daily-maintenance >> /var/log/httpd/ckan_prod/ckan_prodbatch_daily_maintenance.log
 0    6  1  *  * root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/ebs-monthly-backup
 */5  *  *  *  * root /opt/aws/aws-scripts-mon/cloud-watch-update
-*/2  *  *  *  * root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/geoserver-health-check_prodbatch
+*/10 *  *  *  * root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/geoserver-health-check_prodbatch
 0  */3  *  *  * root /usr/lib/ckan/dga/src/ckanext-datagovau/admin/scripts/ckan-trihourly-maintenance
