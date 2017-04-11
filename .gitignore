@@ -9,3 +9,4 @@ build/
 dist/
 distribute-*
 .idea/
+!/admin/config/nginx/ckan_prod.conf
