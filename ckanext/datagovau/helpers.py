@@ -46,9 +46,7 @@ def get_user_datasets_public(user_dict):
 
 def get_ddg_site_statistics():
     def fetch_ddg_stats():
-        stats = {'dataset_count': logic.get_action('package_search')({}, {"rows": 1})['count'],
-                 'group_count': len(logic.get_action('group_list')({}, {})),
-                 'organization_count': len(logic.get_action('organization_list')({}, {})), 'unpub_data_count': 0}
+        stats = {'dataset_count': logic.get_action('package_search')({}, {"rows": 1})['count']}
 
         for fDict in \
                 logic.get_action('package_search')({}, {"facet.field": ["unpublished"], "rows": 1})['search_facets'][
@@ -57,12 +55,6 @@ def get_ddg_site_statistics():
             if fDict['name'] == "Unpublished datasets":
                 stats['unpub_data_count'] = fDict['count']
                 break
-
-        result = model.Session.execute(
-            '''select count(*) from related r
-               left join related_dataset rd on r.id = rd.related_id
-               where rd.status = 'active' or rd.id is null''').first()[0]
-        stats['related_count'] = result
 
         stats['open_count'] = logic.get_action('package_search')({}, {"fq": "isopen:true", "rows": 1})['count']
 
