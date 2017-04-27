@@ -137,6 +137,10 @@ try:
     if dataset['name'] in omitted_pkgs:
         print(dataset['name'] + " in omitted_pkgs blacklist")
         sys.exit(0);
+    activity_list = ckan.action.package_activity_list(id=dataset['id'])
+    if len(activity_list) > 0 and activity_list[0]['user_id'] == "68b91a41-7b08-47f1-8434-780eb9f4332d":
+        print 'last editor was bot'
+        sys.exit(0)
 
     ows_resources = []
     kml_resources = []
@@ -168,11 +172,6 @@ try:
         print "No geodata format files detected"
         sys.exit(0);
 
-    activity_list = ckan.action.package_activity_list(id=dataset['id'])
-    if len(activity_list) > 0 and activity_list[0]['user_id'] == "68b91a41-7b08-47f1-8434-780eb9f4332d" and \
-                    activity_list[0]['timestamp'].split("T")[0] != datetime.now().isoformat().split("T")[0]:
-        print 'last editor was bot'
-        sys.exit(0)
 
     # if geoserver api link does not exist or api link is out of date with data, continue
     if len(ows_resources) > 0:
