@@ -168,18 +168,20 @@ try:
         print "No geodata format files detected"
         sys.exit(0);
 
+    activity_list = ckan.action.package_activity_list(id=dataset['id'])
+    if len(activity_list) > 0 and activity_list[0]['user_id'] == "68b91a41-7b08-47f1-8434-780eb9f4332d" and \
+                    activity_list[0]['timestamp'].split("T")[0] != datetime.now().isoformat().split("T")[0]:
+        print 'last editor was bot'
+        sys.exit(0)
+
     # if geoserver api link does not exist or api link is out of date with data, continue
     if len(ows_resources) > 0:
         # for resource in ows_resources:
         #        if not geoserver_modified_date or parser.parse(resource['last_modified']).date() > parser.parse(geoserver_modified_date).date():
         #		if 'data.gov.au' in resource['url']:
         #                        geoserver_modified_date = resource['last_modified']
-        activity_list = ckan.action.package_activity_list(id=dataset['id'])
+
         # todo scan for last date of non-bot edit
-        if activity_list[0]['user_id'] == "68b91a41-7b08-47f1-8434-780eb9f4332d" and \
-                        activity_list[0]['timestamp'].split("T")[0] != datetime.now().isoformat().split("T")[0]:
-            print 'last editor was bot'
-            sys.exit(0)
         print "Data modified: " + str(parser.parse(data_modified_date))
     # print "Geoserver last updated: " + str(parser.parse(geoserver_modified_date))
     # if parser.parse(data_modified_date).date()  <= parser.parse(geoserver_modified_date).date() :
