@@ -81,25 +81,30 @@ function _repTag(old, updated) {
 }
 
 function gazSearch(gazURL) {
-    var re = new RegExp("submit1=(.*\\d)(&|$)");
-    var m = re.exec(gazURL);
-    if (m != null) {
-        gazID = m[1];
-        $.getJSON("/api/2/util/gazetteer/latlon?q=" + gazID, function (data) {
-            if (data.geojson != undefined) {
-                $('#spatial').val(data.geojson);
-            }
-        })
-    } else {
-        var re2 = new RegExp("[a-zA-Z].*\\d");
-        var m2 = re2.exec(gazURL);
-        if (m2 != null) {
-            gazID = m2[0];
+    if (gazURL.match("^{") && gazURL.match("}$")) {
+        $('#spatial').val(gazURL);
+    }
+    else {
+        var re = new RegExp("submit1=(.*\\d)(&|$)");
+        var m = re.exec(gazURL);
+        if (m != null) {
+            gazID = m[1];
             $.getJSON("/api/2/util/gazetteer/latlon?q=" + gazID, function (data) {
                 if (data.geojson != undefined) {
                     $('#spatial').val(data.geojson);
                 }
             })
+        } else {
+            var re2 = new RegExp("[a-zA-Z].*\\d");
+            var m2 = re2.exec(gazURL);
+            if (m2 != null) {
+                gazID = m2[0];
+                $.getJSON("/api/2/util/gazetteer/latlon?q=" + gazID, function (data) {
+                    if (data.geojson != undefined) {
+                        $('#spatial').val(data.geojson);
+                    }
+                })
+            }
         }
     }
 }
