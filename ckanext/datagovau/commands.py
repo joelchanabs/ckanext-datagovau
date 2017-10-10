@@ -7,7 +7,7 @@ import psycopg2
 from ckan.lib.cli import CkanCommand
 from ckan import model
 
-from ckanext.datagovau import do_ingesting
+from ckanext.datagovau.spatialingestor import do_ingesting
 
 log = logging.getLogger('ckanext_datagovau')
 
@@ -72,7 +72,7 @@ class SpatialIngestor(CkanCommand):
                 do_ingesting(dataset.id, force)
         else:
             log.info("Ingesting %s" % scope)
-            do_ingesting(scope)
+            do_ingesting(scope, True)
 
 
 class ReconcileGeoserverAndDatastore(CkanCommand):

@@ -11,6 +11,8 @@ spatial ingestor for data.gov.au
 1.4 16/01/2015 unzip files into flat structure, record wms layer
                name for future expansion
 '''
+from __future__ import print_function
+
 import calendar
 import errno
 import glob
@@ -34,7 +36,7 @@ from osgeo import osr
 
 from ckan.plugins.toolkit import get_action
 import ckan.model as model
-import ogr2ogr
+from ckanext.datagovau import ogr2ogr
 
 # dga.spatialingestor.paster.dbname
 # dga.spatialingestor.paster.dbuser
@@ -47,7 +49,7 @@ import ogr2ogr
 # dga.spatialingestor.paster.geo_pass
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('root')
 log_handler = logging.StreamHandler()
 log_handler.setFormatter(
     logging.Formatter("%(asctime)s - [%(levelname)8s] - %(message)s")
@@ -55,6 +57,7 @@ log_handler.setFormatter(
 logger.addHandler(log_handler)
 logger.setLevel(logging.DEBUG)
 
+logger.info = logger.warn = logger.debug = logger.error = print
 
 BOT_USER_ID = "68b91a41-7b08-47f1-8434-780eb9f4332d"
 SITE_URL = "https://data.gov.au"
@@ -68,6 +71,14 @@ OMITTED_ORGS = [
 OMITTED_PKGS = [
     'city-of-gold-coast-road-closures', 'central-geelong-3d-massing-model'
 ]
+
+
+class IngestionFail(Exception):
+    pass
+
+
+class IngestionSkip(Exception):
+    pass
 
 
 def _get_tmp_path():
@@ -95,9 +106,9 @@ def _get_username():
     return config.get('dga.spatialingestor.paster.username')
 
 
-def clean_temp(tempdir):
+def clean_temp():
     try:
-        shutil.rmtree(tempdir)
+        shutil.rmtree(_get_tmp_path())
     except:
         pass
 
@@ -105,13 +116,12 @@ def clean_temp(tempdir):
 def success(msg):
     logger.info("Completed!")
     clean_temp()
-    sys.exit(errno.EACCES)
 
 
 def failure(msg):
     logger.error(msg)
     clean_temp()
-    sys.exit(errno.EACCES)
+    raise IngestionFail(msg)
 
 
 def get_cursor(db_settings):
@@ -140,11 +150,11 @@ def _check_if_may_skip(dataset, force=False):
     """
     org_name = dataset['organization']['name']
     if org_name in OMITTED_ORGS:
-        logger.info(org_name + " in omitted_orgs blacklist")
-        sys.exit(0)
+        raise IngestionSkip(org_name + " in omitted_orgs blacklist")
+
     if dataset['name'] in OMITTED_PKGS:
-        print(dataset['name'] + " in omitted_pkgs blacklist")
-        sys.exit(0)
+        raise IngestionSkip(dataset['name'] + " in omitted_pkgs blacklist")
+
     activity_list = get_action('package_activity_list')(
         {'user': _get_username(), 'model': model},
         {'id': dataset['id']})
@@ -153,8 +163,7 @@ def _check_if_may_skip(dataset, force=False):
         return
 
     if activity_list and activity_list[0]['user_id'] == BOT_USER_ID:
-        logger.info('Not updated since last ingest')
-        sys.exit(0)
+        raise IngestionSkip('Not updated since last ingest')
 
 
 def _group_resources(dataset):
@@ -167,8 +176,7 @@ def _group_resources(dataset):
 
         if "wms" in _format or "wfs" in _format:
             if 'geoserver' not in resource['url']:
-                logger.info(dataset['id'] + " already has geo api")
-                sys.exit(0)
+                raise IngestionSkip(dataset['id'] + " already has geo api")
             else:
                 ows.append(resource)
         if 'geoserver' in resource['url']:
@@ -313,7 +321,7 @@ def _load_kml_resources(kml_resources, failure, table_name):
     element = find(tree)
     if len(element):
         for x in range(0, len(element)):
-            print element[x].text
+            print(element[x].text)
             element[x].text = table_name
     else:
         logger.debug('no Folder tag found')
@@ -573,7 +581,10 @@ def _prepare_everything(
     table_name = _clear_old_table(dataset)
 
     # download resource to tmpfile
+    print(table_name)
+    print(dataset['id'], _get_tmp_path())
     tempdir = tempfile.mkdtemp(suffix=dataset['id'], dir=_get_tmp_path())
+    print(tempdir)
     os.chdir(tempdir)
     logger.debug(tempdir + " created")
     using_kml, nativeCRS = _convert_resources(
@@ -610,10 +621,8 @@ def do_ingesting(dataset_id, force):
         grouped_resources = _group_resources(dataset)
         (ows_resources, kml_resources,
          shp_resources, grid_resources) = grouped_resources
-
         if not any(grouped_resources):
-            logger.info("No geodata format files detected")
-            sys.exit(0)
+            raise IngestionSkip("No geodata format files detected")
 
         # if geoserver api link does not exist or api
         # link is out of date with data, continue
@@ -624,6 +633,7 @@ def do_ingesting(dataset_id, force):
          workspace, nativeCRS, tempdir) = _prepare_everything(
             dataset,
             shp_resources, kml_resources, grid_resources)
+
         # load bounding boxes from database
         bbox, latlngbbox, bgjson = _get_geojson(
             using_kml, table_name)
@@ -675,7 +685,9 @@ def do_ingesting(dataset_id, force):
                    title=dataset['title'], site_url=SITE_URL,
                    id=dataset['id'], name=dataset['name'])
         success(msg)
+    except (IngestionSkip, IngestionFail) as e:
+        logger.info('{}: {}'.format(type(e), e))
     except Exception as e:
         logger.error(
             "failed to ingest {0} with error {1}".format(dataset_id, str(e)))
-        clean_temp(tempdir)
+        clean_temp()
