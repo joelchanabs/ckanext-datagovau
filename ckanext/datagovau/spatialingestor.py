@@ -106,16 +106,15 @@ def _get_username():
     return config.get('dga.spatialingestor.paster.username')
 
 
-def clean_temp(dataset_id):
+def clean_temp(tempdir):
     try:
-        shutil.rmtree(os.path.join(_get_tmp_path(), dataset_id))
+        shutil.rmtree(tempdir)
     except:
         pass
 
 
-def success(msg, dataset_id):
+def success(msg):
     logger.info("Completed!")
-    clean_temp(dataset_id)
 
 
 def failure(msg):
@@ -683,12 +682,11 @@ def do_ingesting(dataset_id, force):
                '{site_url}/dataset/{name}').format(
                    title=dataset['title'], site_url=SITE_URL,
                    id=dataset['id'], name=dataset['name'])
-        success(msg, dataset_id)
+        success(msg)
     except (IngestionSkip, IngestionFail) as e:
         logger.info('{}: {}'.format(type(e), e))
-        clean_temp(dataset_id)
-
     except Exception as e:
         logger.error(
             "failed to ingest {0} with error {1}".format(dataset_id, str(e)))
-        clean_temp(dataset_id)
+    finally:
+        clean_temp(tempdir)
