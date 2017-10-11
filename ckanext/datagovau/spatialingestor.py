@@ -629,8 +629,7 @@ def do_ingesting(dataset_id, force):
         # clear old data table
         (using_kml, table_name,
          workspace, nativeCRS) = _prepare_everything(
-            dataset,
-            shp_resources, kml_resources, grid_resources)
+             dataset, shp_resources, kml_resources, grid_resources, tempdir)
 
         # load bounding boxes from database
         bbox, latlngbbox, bgjson = _get_geojson(
