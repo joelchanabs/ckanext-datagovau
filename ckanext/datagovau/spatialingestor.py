@@ -106,21 +106,20 @@ def _get_username():
     return config.get('dga.spatialingestor.paster.username')
 
 
-def clean_temp():
+def clean_temp(dataset_id):
     try:
-        shutil.rmtree(_get_tmp_path())
+        shutil.rmtree(os.path.join(_get_tmp_path(), dataset_id))
     except:
         pass
 
 
-def success(msg):
+def success(msg, dataset_id):
     logger.info("Completed!")
-    clean_temp()
+    clean_temp(dataset_id)
 
 
 def failure(msg):
     logger.error(msg)
-    clean_temp()
     raise IngestionFail(msg)
 
 
@@ -202,7 +201,7 @@ def _clear_old_table(dataset):
     return table_name
 
 
-def _load_esri_shapefiles(shp_resources, failure,
+def _load_esri_shapefiles(shp_resources,
                           table_name, dataset, tempdir):
     shp_res = shp_resources[0]
     shp_res['url'] = shp_res['url'].replace('https', 'http')
@@ -364,7 +363,7 @@ def _convert_resources(
     nativeCRS = ''
     if len(shp_resources) > 0:
         nativeCRS = _load_esri_shapefiles(
-            shp_resources, failure, table_name, dataset, tempdir)
+            shp_resources, table_name, dataset, tempdir)
     elif len(kml_resources) > 0:
         using_kml = True
         nativeCRS = _load_kml_resources(
@@ -684,10 +683,12 @@ def do_ingesting(dataset_id, force):
                '{site_url}/dataset/{name}').format(
                    title=dataset['title'], site_url=SITE_URL,
                    id=dataset['id'], name=dataset['name'])
-        success(msg)
+        success(msg, dataset_id)
     except (IngestionSkip, IngestionFail) as e:
         logger.info('{}: {}'.format(type(e), e))
+        clean_temp(dataset_id)
+
     except Exception as e:
         logger.error(
             "failed to ingest {0} with error {1}".format(dataset_id, str(e)))
-        clean_temp()
+        clean_temp(dataset_id)
