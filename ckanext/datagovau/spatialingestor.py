@@ -608,6 +608,7 @@ def _prepare_everything(
 
 
 def do_ingesting(dataset_id, force):
+    tempdir = None
     try:
         dataset = get_action('package_show')(
             {'model': model, 'user': _get_username()},
@@ -689,4 +690,5 @@ def do_ingesting(dataset_id, force):
         logger.error(
             "failed to ingest {0} with error {1}".format(dataset_id, str(e)))
     finally:
-        clean_temp(tempdir)
+        if tempdir:
+            clean_temp(tempdir)
