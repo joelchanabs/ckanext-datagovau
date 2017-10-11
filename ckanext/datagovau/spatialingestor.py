@@ -573,15 +573,13 @@ def _create_resources_from_formats(
 
 
 def _prepare_everything(
-        dataset,
-        shp_resources, kml_resources, grid_resources):
+        dataset, shp_resources, kml_resources, grid_resources, tempdir):
     # clear old data table
     table_name = _clear_old_table(dataset)
 
     # download resource to tmpfile
     print(table_name)
     print(dataset['id'], _get_tmp_path())
-    tempdir = tempfile.mkdtemp(suffix=dataset['id'], dir=_get_tmp_path())
     print(tempdir)
     os.chdir(tempdir)
     logger.debug(tempdir + " created")
@@ -604,7 +602,7 @@ def _prepare_everything(
         headers={'Content-type': 'application/json'},
         auth=(geo_user, geo_pass))
     # load bounding boxes from database
-    return using_kml, table_name, workspace, nativeCRS, tempdir
+    return using_kml, table_name, workspace, nativeCRS
 
 
 def do_ingesting(dataset_id, force):
@@ -626,10 +624,11 @@ def do_ingesting(dataset_id, force):
         # if geoserver api link does not exist or api
         # link is out of date with data, continue
         _check_ows_amount(ows_resources, dataset)
+        tempdir = tempfile.mkdtemp(suffix=dataset['id'], dir=_get_tmp_path())
 
         # clear old data table
         (using_kml, table_name,
-         workspace, nativeCRS, tempdir) = _prepare_everything(
+         workspace, nativeCRS) = _prepare_everything(
             dataset,
             shp_resources, kml_resources, grid_resources)
 
