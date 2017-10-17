@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import urllib
+from math import copysign
 from pylons import config
 from datetime import datetime
 from zipfile import ZipFile
@@ -169,6 +170,7 @@ def _group_resources(dataset):
     kml = []
     shp = []
     grid = []
+    sld = []
     for resource in dataset['resources']:
         _format = resource['format'].lower()
 
@@ -180,15 +182,15 @@ def _group_resources(dataset):
         if 'geoserver' in resource['url']:
             continue
         if "kml" in _format or "kmz" in _format:
-            logger.debug('Resource: {}'.format(resource))
             kml.append(resource)
         elif "shp" in _format or "shapefile" in _format:
-            logger.debug('Resource: {}'.format(resource))
             shp.append(resource)
         elif "grid" in _format:
-            logger.debug('Resource: {}'.format(resource))
             grid.append(resource)
-    return ows, kml, shp, grid
+        elif "sld" in _format:
+            sld.append(resource)
+
+    return ows, kml, shp, grid, sld
 
 
 def _clear_old_table(dataset):
@@ -451,6 +453,33 @@ def _perform_workspace_requests(datastore, workspace):
     logger.debug('PUT request {}'.format(r))
 
 
+def _apply_sld_resources(sld_resources, workspace):
+    geo_addr, geo_user, geo_pass = _get_geoserver_data()
+    # POST creates, PUT updates
+    for res in sld_resources:
+        name = os.path.splitext(os.path.basename(res['url']))[0] + 'x'
+        style_url = geo_addr + 'rest/workspaces/' + workspace + '/styles/' + name + '.xml'
+        r = requests.get(
+            style_url,
+            params={'quietOnNotFound': True},
+            auth=(geo_user, geo_pass))
+        if r.ok:
+            r = requests.put(
+                style_url,
+                data=requests.get(res['url']).content,
+                headers={'Content-type': 'application/vnd.ogc.sld+xml'},
+                auth=(geo_user, geo_pass))
+        else:
+            r = requests.post(
+                geo_addr + 'rest/workspaces/' + workspace + '/styles.xml',
+                data=requests.get(res['url']).content,
+                params={
+                    'name': name
+                },
+                headers={'Content-type': 'application/vnd.ogc.sld+xml'},
+                auth=(geo_user, geo_pass))
+    
+
 def _update_package_with_bbox(bbox, latlngbbox, ftdata,
                               dataset, nativeCRS, bgjson):
     def _clear_box(string):
@@ -460,6 +489,7 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
 
     minx, miny, maxx, maxy = _clear_box(bbox)
     bbox_obj = {'minx': minx, 'maxx': maxx, 'miny': miny, 'maxy': maxy}
+
     llminx, llminy, llmaxx, llmaxy = _clear_box(latlngbbox)
     llbbox_obj = {
         'minx': llminx,
@@ -471,22 +501,16 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
     ftdata['featureType']['nativeBoundingBox'] = bbox_obj
     ftdata['featureType']['latLonBoundingBox'] = llbbox_obj
     update = False
+    ftdata['featureType']['srs'] = nativeCRS
     logger.debug(
-        "llminx({}), llmaxx({})".format(float(llminx), float(llmaxx)))
-    if float(llminx) < -180 or float(llmaxx) > 180:
-        failure(dataset['title'] + " has invalid automatic projection:" +
-                nativeCRS)
-    else:
-        ftdata['featureType']['srs'] = nativeCRS
-        logger.debug(
-            'bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
-        if 'spatial' not in dataset or dataset['spatial'] != bgjson:
-            dataset['spatial'] = bgjson
-            update = True
+        'bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
+    if 'spatial' not in dataset or dataset['spatial'] != bgjson:
+        dataset['spatial'] = bgjson
+        update = True
     if update:
         logger.debug(dataset)
         get_action('package_update')(
-            {'user': _get_username, 'model': model}, dataset)
+            {'user': _get_username(), 'model': model}, dataset)
     return bbox_obj
 
 
@@ -617,7 +641,7 @@ def do_ingesting(dataset_id, force):
 
         grouped_resources = _group_resources(dataset)
         (ows_resources, kml_resources,
-         shp_resources, grid_resources) = grouped_resources
+         shp_resources, grid_resources, sld_resources) = grouped_resources
         if not any(grouped_resources):
             raise IngestionSkip("No geodata format files detected")
 
@@ -638,7 +662,7 @@ def do_ingesting(dataset_id, force):
 
         datastore = workspace + 'ds'
         _perform_workspace_requests(datastore, workspace)
-
+        _apply_sld_resources(sld_resources, workspace)
         # name layer after resource title
         layer_name = 'ckan_' + table_name
         ftdata = {
@@ -666,7 +690,6 @@ def do_ingesting(dataset_id, force):
             auth=(geo_user, geo_pass))
         logger.debug(r)
         # generate wms/wfs api links, kml, png resources and add to package
-
         existing_formats = []
         for resource in dataset['resources']:
             existing_formats.append(resource['format'].lower())
