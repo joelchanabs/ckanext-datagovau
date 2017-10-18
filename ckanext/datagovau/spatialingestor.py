@@ -457,35 +457,44 @@ def _apply_sld_resources(sld_resources, workspace):
     geo_addr, geo_user, geo_pass = _get_geoserver_data()
     # POST creates, PUT updates
     for res in sld_resources:
-        name = os.path.splitext(os.path.basename(res['url']))[0] + 'x'
+        name = os.path.splitext(os.path.basename(res['url']))[0]
         style_url = geo_addr + 'rest/workspaces/' + workspace + '/styles/' + name + '.xml'
         r = requests.get(
             style_url,
             params={'quietOnNotFound': True},
             auth=(geo_user, geo_pass))
         if r.ok:
-            r = requests.put(
-                style_url,
-                data=requests.get(res['url']).content,
-                headers={'Content-type': 'application/vnd.ogc.sld+xml'},
-                auth=(geo_user, geo_pass))
+            action = requests.put
+            url = style_url
+            params={}
         else:
-            r = requests.post(
-                geo_addr + 'rest/workspaces/' + workspace + '/styles.xml',
-                data=requests.get(res['url']).content,
-                params={
-                    'name': name
-                },
-                headers={'Content-type': 'application/vnd.ogc.sld+xml'},
-                auth=(geo_user, geo_pass))
+            action = requests.post
+            url = geo_addr + 'rest/workspaces/' + workspace + '/styles.xml'
+            params = {'name': name}
+
+        r = action(
+            url, data=requests.get(res['url']).content, params=params,
+            headers={'Content-type': 'application/vnd.ogc.sld+xml'},
+            auth=(geo_user, geo_pass))
     
 
 def _update_package_with_bbox(bbox, latlngbbox, ftdata,
                               dataset, nativeCRS, bgjson):
+    def _remap_coord(val, limit):
+        if abs(val) < limit:
+            return val
+        mod = val % limit
+        sign = copysign(1, mod)
+        return mod - sign * limit
+
     def _clear_box(string):
-        return string.replace(
+        original = map(float, string.replace(
             "BOX", "").replace("(", "").replace(
-                ")", "").replace(",", " ").split(" ")
+                ")", "").replace(",", " ").split(" "))
+        return map(
+            lambda pair: str(_remap_coord(*pair)),
+            zip(original, [180, 90] * 2))
+            
 
     minx, miny, maxx, maxy = _clear_box(bbox)
     bbox_obj = {'minx': minx, 'maxx': maxx, 'miny': miny, 'maxy': maxy}
@@ -508,7 +517,6 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
         dataset['spatial'] = bgjson
         update = True
     if update:
-        logger.debug(dataset)
         get_action('package_update')(
             {'user': _get_username(), 'model': model}, dataset)
     return bbox_obj
@@ -518,7 +526,7 @@ def _create_resources_from_formats(
         ws_addr, layer_name, bbox_obj, existing_formats,
         dataset, ows_resources):
     # FIXME: Why we are iterating over empty list?
-    for _format in []:
+    for _format in []: # ['kml', 'image/png']:
         url = (
             ws_addr + "wms?request=GetMap&layers=" +
             layer_name + "&bbox=" + bbox_obj['minx'] + "," +
@@ -548,6 +556,7 @@ def _create_resources_from_formats(
                     "url": url,
                     "last_modified": datetime.now().isoformat()
             })
+
     if "wms" not in existing_formats:
         get_action('resource_create')(
             {'model': model, 'user': _get_username()}, {
@@ -576,6 +585,7 @@ def _create_resources_from_formats(
                 "wfs_layer": layer_name,
                 "last_modified": datetime.now().isoformat()
         })
+
     # SXTPDFINXZCB-292 - Remove CSV creation, as this
     # causes a number of issues with the datapusher
     for _format in ['json', 'geojson']:
@@ -694,7 +704,7 @@ def do_ingesting(dataset_id, force):
         for resource in dataset['resources']:
             existing_formats.append(resource['format'].lower())
         # TODO append only if format not already in resources list
-        ws_addr = "http://data.gov.au/geoserver/" + dataset['name'] + "/"
+        ws_addr = geo_addr + dataset['name'] + "/"
         _create_resources_from_formats(
             ws_addr, layer_name, bbox_obj, existing_formats,
             dataset, ows_resources)
