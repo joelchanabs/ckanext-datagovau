@@ -405,7 +405,7 @@ def _load_tab_resources(resources, table_name):
         with ZipFile(filepath, 'r') as myzip:
             files = myzip.NameToInfo.keys()
             myzip.extractall()
-        logger.debug("TAB archive unziped. Files: {}".format(files))
+
         tab_file = None
         for f in files:
             if f.lower().endswith('tab'):
@@ -473,18 +473,21 @@ def _perform_workspace_requests(datastore, workspace):
 
     geo_addr, geo_user, geo_pass = _get_geoserver_data()
     # POST creates, PUT updates
-    r = requests.post(
-        geo_addr + 'rest/workspaces/' + workspace + '/datastores',
-        data=dsdata,
+    _base_url = geo_addr + 'rest/workspaces/' + workspace + '/datastores'
+    _ds_url = _base_url + '/' + datastore
+    r = requests.head(_ds_url, auth=(geo_user, geo_pass))
+    if r.ok:
+        action = requests.put
+        url = _ds_url
+    else:
+        action = requests.post
+        url = _base_url
+
+    r = action(
+        url, data=dsdata,
         headers={'Content-type': 'application/json'},
         auth=(geo_user, geo_pass))
-    logger.debug('POST request {}'.format(r))
-    r = requests.put(
-        geo_addr + 'rest/workspaces/' + workspace + '/datastores',
-        data=dsdata,
-        headers={'Content-type': 'application/json'},
-        auth=(geo_user, geo_pass))
-    logger.debug('PUT request {}'.format(r))
+    logger.debug('DataStore request to {}: {}'.format(url, r))
 
 
 def _apply_sld_resources(sld_resources, workspace):
@@ -544,7 +547,7 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
     ftdata['featureType']['nativeBoundingBox'] = bbox_obj
     ftdata['featureType']['latLonBoundingBox'] = llbbox_obj
     update = False
-    ftdata['featureType']['srs'] = nativeCRS
+    ftdata['featureType']['crs'] = nativeCRS
     logger.debug(
         'bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
     if 'spatial' not in dataset or dataset['spatial'] != bgjson:
@@ -721,19 +724,25 @@ def do_ingesting(dataset_id, force):
             bbox_obj = _update_package_with_bbox(bbox, latlngbbox, ftdata,
                                                  dataset, nativeCRS, bgjson)
 
+
         ftdata = json.dumps(ftdata)
         geo_addr, geo_user, geo_pass = _get_geoserver_data()
-        logger.debug(
-            geo_addr + 'rest/workspaces/' + workspace +
-            '/datastores/' + datastore + "/featuretypes")
         logger.debug(ftdata)
-        r = requests.post(
-            geo_addr + 'rest/workspaces/' + workspace + '/datastores/' +
-            datastore + "/featuretypes",
-            data=ftdata,
+        _ft_base_url = geo_addr + 'rest/workspaces/' + workspace + '/datastores/' + datastore + "/featuretypes"
+        _ft_item_url = _ft_base_url + '/' + layer_name
+        r = requests.head(_ft_item_url, auth=(geo_user, geo_pass))
+
+        if r.ok:
+            action = requests.put
+            url = _ft_item_url
+        else:
+            action = requests.post
+            url = _ft_base_url
+        r = action(
+            url, data=ftdata,
             headers={'Content-Type': 'application/json'},
             auth=(geo_user, geo_pass))
-        logger.debug(r)
+        logger.debug('{}: {}'.format(r, r.content))
         # generate wms/wfs api links, kml, png resources and add to package
         existing_formats = []
         for resource in dataset['resources']:
