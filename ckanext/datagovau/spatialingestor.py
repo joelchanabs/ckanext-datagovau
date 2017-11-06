@@ -229,7 +229,6 @@ def _load_esri_shapefiles(shp_resources,
 
         # FIXME: why this variable is redefined
         res = sr.AutoIdentifyEPSG()
-        res = -1
         if res == 0:  # success
             nativeCRS = sr.GetAuthorityName(
                 None) + ":" + sr.GetAuthorityCode(None)
@@ -391,7 +390,7 @@ def _convert_resources(
         ]
         ogr2ogr.main(pargs)
     elif len(tab_resources):
-        _load_tab_resources(tab_resources, table_name)
+        nativeCRS = _load_tab_resources(tab_resources, table_name)
 
     return using_kml, nativeCRS
 
@@ -402,27 +401,31 @@ def _load_tab_resources(resources, table_name):
         logger.debug("using TAB file " + url)
         filepath, headers = urllib.urlretrieve(url, "input.zip")
         logger.debug("grid downlaoded")
+
         with ZipFile(filepath, 'r') as myzip:
             files = myzip.NameToInfo.keys()
             myzip.extractall()
-
+        logger.debug("TAB archive unziped. Files: {}".format(files))
         tab_file = None
         for f in files:
             if f.lower().endswith('tab'):
                 tab_file = f
+
+        nativeCRS = 'EPSG:4326'
+
         db_settings = _get_db_settings()
+
         pargs = [
             'ogr2ogr', '-f', 'PostgreSQL', "--config", "PG_USE_COPY", "YES",
             'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' +
             db_settings['host'] + '\' user=\'' + db_settings['user'] +
             '\' password=\'' + db_settings['password'] + '\'',
             tab_file, '-nln', table_name, '-lco', 'GEOMETRY_NAME=geom',
-            '-nlt', 'MULTILINESTRING'
+            '-t_srs', nativeCRS, '-overwrite'
         ]
-        # import pdb; pdb.set_trace()
 
         result = ogr2ogr.main(pargs)
-    return True
+    return nativeCRS
 
 def _get_geojson(using_kml, table_name):
     cur, conn = get_cursor(_get_db_settings())
@@ -517,21 +520,10 @@ def _apply_sld_resources(sld_resources, workspace):
 
 def _update_package_with_bbox(bbox, latlngbbox, ftdata,
                               dataset, nativeCRS, bgjson):
-    def _remap_coord(val, limit):
-        if abs(val) < limit:
-            return val
-        mod = val % limit
-        sign = copysign(1, mod)
-        return mod - sign * limit
-
     def _clear_box(string):
-        original = map(float, string.replace(
+        return string.replace(
             "BOX", "").replace("(", "").replace(
-                ")", "").replace(",", " ").split(" "))
-        return map(
-            lambda pair: str(_remap_coord(*pair)),
-            zip(original, [180, 90] * 2))
-            
+                ")", "").replace(",", " ").split(" ")
 
     minx, miny, maxx, maxy = _clear_box(bbox)
     bbox_obj = {'minx': minx, 'maxx': maxx, 'miny': miny, 'maxy': maxy}
@@ -547,12 +539,15 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
     ftdata['featureType']['nativeBoundingBox'] = bbox_obj
     ftdata['featureType']['latLonBoundingBox'] = llbbox_obj
     update = False
-    ftdata['featureType']['crs'] = nativeCRS
-    logger.debug(
-        'bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
-    if 'spatial' not in dataset or dataset['spatial'] != bgjson:
-        dataset['spatial'] = bgjson
-        update = True
+    if float(llminx) < -180 or float(llmaxx) > 180:
+        failure(dataset['title'] + " has invalid automatic projection:" +
+                nativeCRS)
+    else:
+        ftdata['featureType']['srs'] = nativeCRS
+        logger.debug('bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
+        if 'spatial' not in dataset or dataset['spatial'] != bgjson:
+            dataset['spatial'] = bgjson
+            update = True
     if update:
         get_action('package_update')(
             {'user': _get_username(), 'model': model}, dataset)
