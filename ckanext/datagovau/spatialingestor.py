@@ -171,6 +171,7 @@ def _group_resources(dataset):
     shp = []
     grid = []
     sld = []
+    tab = []
     for resource in dataset['resources']:
         _format = resource['format'].lower()
 
@@ -189,8 +190,9 @@ def _group_resources(dataset):
             grid.append(resource)
         elif "sld" in _format:
             sld.append(resource)
-
-    return ows, kml, shp, grid, sld
+        elif "tab" in _format:
+            tab.append(resource)
+    return ows, kml, shp, grid, sld, tab
 
 
 def _clear_old_table(dataset):
@@ -272,7 +274,7 @@ def _load_esri_shapefiles(shp_resources,
     return nativeCRS
 
 
-def _load_kml_resources(kml_resources, failure, table_name):
+def _load_kml_resources(kml_resources, table_name):
     kml_res = kml_resources[0]
     kml_res['url'] = kml_res['url'].replace('https', 'http')
     logger.debug(
@@ -359,16 +361,17 @@ def _check_ows_amount(ows_resources, dataset):
 
 def _convert_resources(
         shp_resources, table_name, dataset, tempdir,
-        kml_resources, grid_resources):
+        kml_resources, grid_resources, tab_resources):
     using_kml = False
     nativeCRS = ''
+
     if len(shp_resources) > 0:
         nativeCRS = _load_esri_shapefiles(
             shp_resources, table_name, dataset, tempdir)
     elif len(kml_resources) > 0:
         using_kml = True
         nativeCRS = _load_kml_resources(
-            kml_resources, failure, table_name)
+            kml_resources, table_name)
     elif len(grid_resources) > 0:
         grid_url = grid_resources[0]['url'].replace('https', 'http')
         logger.debug("using grid file " + grid_url)
@@ -387,8 +390,39 @@ def _convert_resources(
             table_name + ".kml", '-lco', 'GEOMETRY_NAME=geom'
         ]
         ogr2ogr.main(pargs)
+    elif len(tab_resources):
+        _load_tab_resources(tab_resources, table_name)
+
     return using_kml, nativeCRS
 
+
+def _load_tab_resources(resources, table_name):
+    for resource in resources:
+        url = resource['url'].replace('https', 'http')
+        logger.debug("using TAB file " + url)
+        filepath, headers = urllib.urlretrieve(url, "input.zip")
+        logger.debug("grid downlaoded")
+        with ZipFile(filepath, 'r') as myzip:
+            files = myzip.NameToInfo.keys()
+            myzip.extractall()
+
+        tab_file = None
+        for f in files:
+            if f.lower().endswith('tab'):
+                tab_file = f
+        db_settings = _get_db_settings()
+        pargs = [
+            'ogr2ogr', '-f', 'PostgreSQL', "--config", "PG_USE_COPY", "YES",
+            'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' +
+            db_settings['host'] + '\' user=\'' + db_settings['user'] +
+            '\' password=\'' + db_settings['password'] + '\'',
+            tab_file, '-nln', table_name, '-lco', 'GEOMETRY_NAME=geom',
+            '-nlt', 'MULTILINESTRING'
+        ]
+        # import pdb; pdb.set_trace()
+
+        result = ogr2ogr.main(pargs)
+    return True
 
 def _get_geojson(using_kml, table_name):
     cur, conn = get_cursor(_get_db_settings())
@@ -439,18 +473,21 @@ def _perform_workspace_requests(datastore, workspace):
 
     geo_addr, geo_user, geo_pass = _get_geoserver_data()
     # POST creates, PUT updates
-    r = requests.post(
-        geo_addr + 'rest/workspaces/' + workspace + '/datastores',
-        data=dsdata,
+    _base_url = geo_addr + 'rest/workspaces/' + workspace + '/datastores'
+    _ds_url = _base_url + '/' + datastore
+    r = requests.head(_ds_url, auth=(geo_user, geo_pass))
+    if r.ok:
+        action = requests.put
+        url = _ds_url
+    else:
+        action = requests.post
+        url = _base_url
+
+    r = action(
+        url, data=dsdata,
         headers={'Content-type': 'application/json'},
         auth=(geo_user, geo_pass))
-    logger.debug('POST request {}'.format(r))
-    r = requests.put(
-        geo_addr + 'rest/workspaces/' + workspace + '/datastores',
-        data=dsdata,
-        headers={'Content-type': 'application/json'},
-        auth=(geo_user, geo_pass))
-    logger.debug('PUT request {}'.format(r))
+    logger.debug('DataStore request to {}: {}'.format(url, r))
 
 
 def _apply_sld_resources(sld_resources, workspace):
@@ -510,7 +547,7 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
     ftdata['featureType']['nativeBoundingBox'] = bbox_obj
     ftdata['featureType']['latLonBoundingBox'] = llbbox_obj
     update = False
-    ftdata['featureType']['srs'] = nativeCRS
+    ftdata['featureType']['crs'] = nativeCRS
     logger.debug(
         'bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
     if 'spatial' not in dataset or dataset['spatial'] != bgjson:
@@ -607,19 +644,18 @@ def _create_resources_from_formats(
 
 
 def _prepare_everything(
-        dataset, shp_resources, kml_resources, grid_resources, tempdir):
+        dataset, shp_resources, kml_resources, grid_resources,
+        tab_resources, tempdir):
+
     # clear old data table
     table_name = _clear_old_table(dataset)
 
     # download resource to tmpfile
-    print(table_name)
-    print(dataset['id'], _get_tmp_path())
-    print(tempdir)
     os.chdir(tempdir)
     logger.debug(tempdir + " created")
     using_kml, nativeCRS = _convert_resources(
         shp_resources, table_name, dataset, tempdir,
-        kml_resources,  grid_resources)
+        kml_resources,  grid_resources, tab_resources)
 
     # create geoserver workspace/layers http://boundlessgeo.com
     # /2012/10/adding-layers-to-geoserver-using-the-rest-api/
@@ -651,7 +687,8 @@ def do_ingesting(dataset_id, force):
 
         grouped_resources = _group_resources(dataset)
         (ows_resources, kml_resources,
-         shp_resources, grid_resources, sld_resources) = grouped_resources
+         shp_resources, grid_resources, 
+         sld_resources, tab_resources) = grouped_resources
         if not any(grouped_resources):
             raise IngestionSkip("No geodata format files detected")
 
@@ -663,7 +700,8 @@ def do_ingesting(dataset_id, force):
         # clear old data table
         (using_kml, table_name,
          workspace, nativeCRS) = _prepare_everything(
-             dataset, shp_resources, kml_resources, grid_resources, tempdir)
+             dataset, shp_resources, kml_resources, 
+             grid_resources, tab_resources, tempdir)
 
         # load bounding boxes from database
         bbox, latlngbbox, bgjson = _get_geojson(
@@ -686,19 +724,25 @@ def do_ingesting(dataset_id, force):
             bbox_obj = _update_package_with_bbox(bbox, latlngbbox, ftdata,
                                                  dataset, nativeCRS, bgjson)
 
+
         ftdata = json.dumps(ftdata)
         geo_addr, geo_user, geo_pass = _get_geoserver_data()
-        logger.debug(
-            geo_addr + 'rest/workspaces/' + workspace +
-            '/datastores/' + datastore + "/featuretypes")
         logger.debug(ftdata)
-        r = requests.post(
-            geo_addr + 'rest/workspaces/' + workspace + '/datastores/' +
-            datastore + "/featuretypes",
-            data=ftdata,
+        _ft_base_url = geo_addr + 'rest/workspaces/' + workspace + '/datastores/' + datastore + "/featuretypes"
+        _ft_item_url = _ft_base_url + '/' + layer_name
+        r = requests.head(_ft_item_url, auth=(geo_user, geo_pass))
+
+        if r.ok:
+            action = requests.put
+            url = _ft_item_url
+        else:
+            action = requests.post
+            url = _ft_base_url
+        r = action(
+            url, data=ftdata,
             headers={'Content-Type': 'application/json'},
             auth=(geo_user, geo_pass))
-        logger.debug(r)
+        logger.debug('{}: {}'.format(r, r.content))
         # generate wms/wfs api links, kml, png resources and add to package
         existing_formats = []
         for resource in dataset['resources']:
