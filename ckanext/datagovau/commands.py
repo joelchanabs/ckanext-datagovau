@@ -4,12 +4,13 @@ import sys
 
 import paste.script
 import psycopg2
-from ckan.lib.cli import CkanCommand
 from ckan import model
+from ckan.lib.cli import CkanCommand
 
-from ckanext.datagovau.spatialingestor import do_ingesting
+from ckanext.datagovau.spatialingestor import do_ingesting, check_if_may_skip, clean_assets
 
 log = logging.getLogger('ckanext_datagovau')
+
 
 # No other CKAN imports allowed until _load_config is run,
 # or logging is disabled
@@ -59,20 +60,59 @@ class SpatialIngestor(CkanCommand):
             print self.usage
         elif self.args[0] == 'ingest':
             self._ingest(self.args[1])
+        elif self.args[0] == 'purge':
+            self._purge(self.args[1])
 
     def _ingest(self, scope):
         if scope in ('all', 'updated'):
             force = True if scope == 'all' else False
-            all_datasets = model.Session.query(
-                model.Package).filter_by(
-                    state='active'
-                )
-            for dataset in all_datasets:
-                log.info("Ingesting %s" % dataset.id)
-                do_ingesting(dataset.id, force)
+            pkg_ids = [
+                r[0]
+                for r in model.Session.query(
+                    model.Package.id).filter_by(state='active').all()
+            ]
+
+            total = len(pkg_ids)
+
+            sys.stdout.write(" Found {0} Package IDs".format(total))
+            sys.stdout.write("\nIngesting Package ID 0/0")
+
+            for counter, pkg_id in enumerate(pkg_ids):
+                sys.stdout.write(
+                    "\rIngesting Package ID {0}/{1}".format(counter + 1, total))
+                sys.stdout.flush()
+                # log.info("Ingesting %s" % dataset.id)
+                do_ingesting(pkg_id, force)
         else:
-            log.info("Ingesting %s" % scope)
+            # log.info("Ingesting %s" % scope)
             do_ingesting(scope, True)
+
+    def _purge(self, scope):
+        if scope in ['all', 'erroneous']:
+            pkg_ids = [
+                r[0]
+                for r in model.Session.query(model.Package.id).all()
+            ]
+
+            total = len(pkg_ids)
+
+            sys.stdout.write(" Found {0} Package IDs".format(total))
+            sys.stdout.write("\nPurging Package ID 0/0")
+
+            for counter, pkg_id in enumerate(pkg_ids):
+                sys.stdout.write(
+                    "\rPurging Package ID {0}/{1}".format(counter + 1, total))
+                sys.stdout.flush()
+                if scope == 'erroneous':
+                    try:
+                        check_if_may_skip(pkg_id, True)
+                    except:
+                        clean_assets(pkg_id)
+                else:
+                    clean_assets(pkg_id, skip_grids=True)
+        else:
+            # log.info("Ingesting %s" % scope)
+            clean_assets(scope)
 
 
 class ReconcileGeoserverAndDatastore(CkanCommand):
@@ -97,8 +137,8 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         from ckan.lib import cli, search
         from ckan.plugins import toolkit
 
-        geoserver_info = cli.parse_db_config('ckanext.datagovau.geoserver.url')
-        postgis_info = cli.parse_db_config('ckanext.datagovau.postgis.url')
+        geoserver_info = cli.parse_db_config('ckanext.datagovau.spatialingestor.geoserver.url')
+        postgis_info = cli.parse_db_config('ckanext.datagovau.spatialingestor.postgis.url')
         datastore_info = cli.parse_db_config('ckanext.datagovau.datastore.url')
 
         active_datastore_tablenames = set()
@@ -106,7 +146,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
 
         datastore_postgis_same = config.get(
             'ckanext.datagovau.datastore.url') == config.get(
-                'ckanext.datagovau.postgis.url')
+            'ckanext.datagovau.postgis.url')
 
         dry_run = (len(self.args) == 1 and self.args[0].lower() == "dry-run")
         clean_all = (len(self.args) == 1
@@ -121,11 +161,11 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
 
         sys.stdout.write("\n----------")
         if all([
-                not x
-                for x in [
-                    dry_run, clean_all, clean_dbs, clean_geoserver,
-                    clean_ckan_resources
-                ]
+            not x
+            for x in [
+                dry_run, clean_all, clean_dbs, clean_geoserver,
+                clean_ckan_resources
+            ]
         ]):
             sys.stdout.write("\nUsage:")
             sys.stdout.write("\n         paster --plugin=ckanext-datagovau "
@@ -213,7 +253,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
             sys.stdout.write(" Found {0} Tables".format(len(postgis_tables)))
 
         # Get geoserver workspaces
-        geoserver_url = 'http://' + geoserver_info['db_host']
+        geoserver_url = 'https://' + geoserver_info['db_host']
         if geoserver_info.get('db_port', '') != '':
             geoserver_url += ':' + geoserver_info['db_port']
         geoserver_url += '/' + geoserver_info['db_name'] + '/'
@@ -264,8 +304,8 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                         auth=geoserver_credentials)
 
                     for ft in [
-                            r['name']
-                            for r in res.json()['featureTypes']['featureType']
+                        r['name']
+                        for r in res.json()['featureTypes']['featureType']
                     ]:
                         if re.search('ckan\_(.*)', ft):
                             ft = re.search('ckan\_(.*)', ft).group(1)
@@ -322,7 +362,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                         ws_name = re_res.group(1)
                         if (ws_name in ws_without_table
                             ) or not (ws_name in geoserver_workspaces) or (
-                                'outputformat=csv' in res_dict.get(
+                                    'outputformat=csv' in res_dict.get(
                                     'url', '').lower()):
                             resources_to_delete.add(res_dict['id'])
                             res_delete = True
@@ -346,24 +386,24 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                         new_label_bool = toolkit.asbool(new_label)
                         sys.stdout.write(
                             "\nCorrecting 'datastore_active' Value For {0}".
-                            format(res_dict['id']))
+                                format(res_dict['id']))
                         try:
                             res_dict['datastore_active'] = new_label_bool
                             if clean_ckan_resources:
                                 toolkit.get_action('resource_update')({
                                     'ignore_auth':
-                                    True
+                                        True
                                 }, res_dict)
                             active_datastore_tablenames.add(res_dict['id'])
                         except:
                             if new_label_bool:
                                 sys.stdout.write(
                                     "\nResource {0} Failed Validation; Will Drop Associated Datastore Table".
-                                    format(res_dict['id']))
+                                        format(res_dict['id']))
                             else:
                                 sys.stdout.write(
                                     "\nResource {0} Failed Validation; Marking Resource For Deletion".
-                                    format(res_dict['id']))
+                                        format(res_dict['id']))
                                 resources_to_delete.add(res_dict['id'])
                                 if ws_name:
                                     if ws_name in active_filestore_workspaces:
@@ -401,7 +441,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         for counter, ws in enumerate(active_geoserver_workspaces):
             sys.stdout.write(
                 "\rExtracting PostGIS Table Name From Geoserver Workspace {0}/{1}".
-                format(counter + 1, total))
+                    format(counter + 1, total))
             sys.stdout.flush()
             res = requests.get(
                 geoserver_url + 'rest/workspaces/' + ws + '/datastores',
@@ -417,8 +457,8 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                     headers=geoserver_headers,
                     auth=geoserver_credentials)
                 for ft in [
-                        r['name']
-                        for r in res.json()['featureTypes']['featureType']
+                    r['name']
+                    for r in res.json()['featureTypes']['featureType']
                 ]:
                     if re.search('ckan\_(.*)', ft):
                         ft = re.search('ckan\_(.*)', ft).group(1)
@@ -476,7 +516,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         sys.stdout.write("\n----------")
         sys.stdout.write(
             "\nTables To Be Dropped From Datastore DB ({0} Out Of {1}):".
-            format(len(datastore_tables_to_drop), len(datastore_tables)))
+                format(len(datastore_tables_to_drop), len(datastore_tables)))
         cursor, connection = get_db_cursor(datastore_info)
         for table_name in datastore_tables_to_drop:
             sys.stdout.write("\nDropping Table {0}".format(table_name))
@@ -490,7 +530,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
             sys.stdout.write("\n----------")
             sys.stdout.write(
                 "\nTables To Be Dropped From PostGIS DB ({0} Out Of {1}):".
-                format(len(postgis_tables_to_drop), len(postgis_tables)))
+                    format(len(postgis_tables_to_drop), len(postgis_tables)))
             cursor, connection = get_db_cursor(postgis_info)
             for table_name in postgis_tables_to_drop:
                 sys.stdout.write("\nDropping Table {0}".format(table_name))

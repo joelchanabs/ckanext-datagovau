@@ -26,6 +26,6 @@ setup(
 
 		[paste.paster_command]
 		cleanupdatastoregeoserver = ckanext.datagovau.commands:ReconcileGeoserverAndDatastore
-                spatial-ingestor = ckanext.datagovau.commands:SpatialIngestor
+        spatial-ingestor = ckanext.datagovau.commands:SpatialIngestor
 	""",
 )
