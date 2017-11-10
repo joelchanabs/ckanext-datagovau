@@ -755,6 +755,17 @@ def _create_resources_from_formats(
     bbox_str = "&bbox=" + bbox_obj['minx'] + "," + bbox_obj['miny'] + "," + bbox_obj['maxx'] + "," + bbox_obj[
         'maxy'] if bbox_obj else ''
 
+    # Easiest to just delete out all previous geoserver resources and re-create
+    geoserver_resources = filter(
+        lambda x: any(
+            [old_urls in x['url'] and '/geoserver' in x['url'] for old_urls in
+             ['dga.links.com.au', 'data.gov.au']]),
+        dataset['resources'])
+
+    for res in geoserver_resources:
+        get_action('resource_delete')(
+            {'model': model, 'user': _get_username(), 'ignore_auth': True}, res)
+
     for _format in _get_target_formats():  # ['kml', 'image/png']:
         url = (
             ws_addr + "wms?request=GetMap&layers=" +
@@ -771,53 +782,47 @@ def _create_resources_from_formats(
                     "url": url,
                     "last_modified": datetime.now().isoformat()
                 })
-        elif _format == "kml" and _format not in existing_formats:
-            logger.debug("Creating KML Resource")
-            get_action('resource_create')(
-                {'user': _get_username(), 'model': model}, {
-                    "package_id": dataset['id'],
-                    "name": dataset['title'] + " KML",
-                    "description": (
-                        "View a map of this dataset in web "
-                        "and desktop spatial data tools"
-                        " including Google Earth"),
-                    "format": _format,
-                    "url": url,
-                    "last_modified": datetime.now().isoformat()
-                })
-        elif _format in ["wms", "wfs"]:
+        elif _format == "kml":
             if _format not in existing_formats:
-                if _format == "wms":
-                    logger.debug("Creating WMS API Endpoint Resource")
-                    get_action('resource_create')(
-                        {'model': model, 'user': _get_username()}, {
-                            "package_id": dataset['id'],
-                            "name": dataset['title'] + " - Preview this Dataset (WMS)",
-                            "description": ("View the data in this "
-                                            "dataset online via an online map"),
-                            "format": "wms",
-                            "url": ws_addr + "wms?request=GetCapabilities",
-                            "wms_layer": layer_name,
-                            "last_modified": datetime.now().isoformat()
-                        })
-                else:
-                    logger.debug("Creating WFS API Endpoint Resource")
-                    get_action('resource_create')(
-                        {'model': model, 'user': _get_username()}, {
-                            "package_id": dataset['id'],
-                            "name": dataset['title'] + " Web Feature Service API Link",
-                            "description": "WFS API Link for use in Desktop GIS tools",
-                            "format": "wfs",
-                            "url": ws_addr + "wfs",
-                            "wfs_layer": layer_name,
-                            "last_modified": datetime.now().isoformat()
-                        })
+                logger.debug("Creating KML Resource")
+                get_action('resource_create')(
+                    {'user': _get_username(), 'model': model}, {
+                        "package_id": dataset['id'],
+                        "name": dataset['title'] + " KML",
+                        "description": (
+                            "View a map of this dataset in web "
+                            "and desktop spatial data tools"
+                            " including Google Earth"),
+                        "format": _format,
+                        "url": url,
+                        "last_modified": datetime.now().isoformat()
+                    })
+        elif _format in ["wms", "wfs"] and _format not in existing_formats:
+            if _format == "wms":
+                logger.debug("Creating WMS API Endpoint Resource")
+                get_action('resource_create')(
+                    {'model': model, 'user': _get_username()}, {
+                        "package_id": dataset['id'],
+                        "name": dataset['title'] + " - Preview this Dataset (WMS)",
+                        "description": ("View the data in this "
+                                        "dataset online via an online map"),
+                        "format": "wms",
+                        "url": ws_addr + "wms?request=GetCapabilities",
+                        "wms_layer": layer_name,
+                        "last_modified": datetime.now().isoformat()
+                    })
             else:
-                for target_res in filter(lambda res: res['format'].lower() == _format and ws_addr in res['url'],
-                                         dataset['resources']):
-                    target_res['last_modified'] = datetime.now().isoformat()
-                    get_action('resource_update')(
-                        {'model': model, 'user': _get_username()}, target_res)
+                logger.debug("Creating WFS API Endpoint Resource")
+                get_action('resource_create')(
+                    {'model': model, 'user': _get_username()}, {
+                        "package_id": dataset['id'],
+                        "name": dataset['title'] + " Web Feature Service API Link",
+                        "description": "WFS API Link for use in Desktop GIS tools",
+                        "format": "wfs",
+                        "url": ws_addr + "wfs",
+                        "wfs_layer": layer_name,
+                        "last_modified": datetime.now().isoformat()
+                        })
         elif _format in ['json', 'geojson']:
             url = (ws_addr + "wfs?request=GetFeature&typeName=" +
                    layer_name + "&outputFormat=" + urllib.quote('json'))
@@ -833,44 +838,17 @@ def _create_resources_from_formats(
                         "url": url,
                         "last_modified": datetime.now().isoformat()
                     })
-            else:
-                # Take first JSON resource and update it to GeoJSON output, delete all other JSON resources
-                json_resources = filter(
-                    lambda res: res['format'].lower() in ['json', 'geojson'] and ws_addr in res['url'],
-                    dataset['resources'])
-                geojson_created = False
-                for target_res in json_resources:
-                    target_res['format'] = "geojson"
-                    target_res['url'] = url
-                    target_res['name'] = dataset['title'] + " GeoJSON"
-                    target_res['last_modified'] = datetime.now().isoformat()
-                    if not geojson_created:
-                        logger.debug("Updating GeoJSON Resource")
-                        get_action('resource_update')(
-                            {'model': model, 'user': _get_username()}, target_res)
-                        geojson_created = True
-                    else:
-                        logger.debug("Deleting Superfluous GeoJSON Resource")
-                        get_action('resource_delete')(
-                            {'model': model, 'user': _get_username(), 'ignore_auth': True}, target_res)
 
 
-def _delete_legacy_resources(ws_addr, dataset):
+def _delete_resources(dataset):
     geoserver_resources = filter(
         lambda x: any(
             [old_urls in x['url'] and '/geoserver' in x['url'] for old_urls in ['dga.links.com.au', 'data.gov.au']]),
         dataset['resources'])
-    target_formats = _get_target_formats()
-    if 'json' in target_formats:
-        target_formats.remove('json')
-        target_formats.add('geojson')
-    if 'image/png' in target_formats:
-        target_formats.add('png')
 
     for res in geoserver_resources:
-        if res['format'].lower() not in target_formats or ws_addr not in res['url']:
-            get_action('resource_delete')(
-                {'model': model, 'user': _get_username(), 'ignore_auth': True}, res)
+        get_action('resource_delete')(
+            {'model': model, 'user': _get_username(), 'ignore_auth': True}, res)
 
 
 def _prepare_everything(
@@ -1003,15 +981,7 @@ def clean_assets(dataset_id, skip_grids=False, display=False):
             if r.ok:
                 logger.debug('Workspace request to delete {} succeeded'.format(url))
 
-        geoserver_resources = filter(
-            lambda x: any(
-                [old_urls in x['url'] and '/geoserver' in x['url'] for old_urls in
-                 ['dga.links.com.au', 'data.gov.au']]),
-            dataset['resources'])
-
-        for res in geoserver_resources:
-            get_action('resource_delete')(
-                {'model': model, 'user': _get_username(), 'ignore_auth': True}, res)
+        _delete_resources(dataset)
 
     if display:
         logger.debug("Done cleaning out assets!")
@@ -1110,7 +1080,9 @@ def do_ingesting(dataset_id, force):
         # Move on to creating CKAN assets
         ws_addr = geo_public_addr + _get_valid_qname(dataset['name']) + "/"
 
-        # generate wms/wfs api links, kml, png resources and add to package
+        # Delete out all geoserver resources before rebuilding (this simplifies update logic)
+        _delete_resources(dataset)
+
         existing_formats = []
         for resource in dataset['resources']:
             existing_formats.append(resource['format'].lower())
@@ -1122,8 +1094,6 @@ def do_ingesting(dataset_id, force):
         dataset = get_action('package_show')(
             {'model': model, 'user': _get_username(), 'ignore_auth': True},
             {'id': dataset_id})
-
-        _delete_legacy_resources(ws_addr, dataset)
 
         _success()
     except IngestionSkip as e:
