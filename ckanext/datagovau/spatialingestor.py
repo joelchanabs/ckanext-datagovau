@@ -761,7 +761,7 @@ def _create_resources_from_formats(
             layer_name + bbox_str + "&width=512&height=512&format=" +
             urllib.quote(_format))
         if _format == "image/png" and _format not in existing_formats:
-            logger.debug("Making PNG")
+            logger.debug("Creating PNG Resource")
             get_action('resource_create')(
                 {'model': model, 'user': _get_username()}, {
                     "package_id": dataset['id'],
@@ -772,6 +772,7 @@ def _create_resources_from_formats(
                     "last_modified": datetime.now().isoformat()
                 })
         elif _format == "kml" and _format not in existing_formats:
+            logger.debug("Creating KML Resource")
             get_action('resource_create')(
                 {'user': _get_username(), 'model': model}, {
                     "package_id": dataset['id'],
@@ -787,6 +788,7 @@ def _create_resources_from_formats(
         elif _format in ["wms", "wfs"]:
             if _format not in existing_formats:
                 if _format == "wms":
+                    logger.debug("Creating WMS API Endpoint Resource")
                     get_action('resource_create')(
                         {'model': model, 'user': _get_username()}, {
                             "package_id": dataset['id'],
@@ -799,6 +801,7 @@ def _create_resources_from_formats(
                             "last_modified": datetime.now().isoformat()
                         })
                 else:
+                    logger.debug("Creating WFS API Endpoint Resource")
                     get_action('resource_create')(
                         {'model': model, 'user': _get_username()}, {
                             "package_id": dataset['id'],
@@ -819,6 +822,7 @@ def _create_resources_from_formats(
             url = (ws_addr + "wfs?request=GetFeature&typeName=" +
                    layer_name + "&outputFormat=" + urllib.quote('json'))
             if not any([x in existing_formats for x in ["json", "geojson"]]):
+                logger.debug("Creating GeoJSON Resource")
                 get_action('resource_create')(
                     {'model': model, 'user': _get_username()}, {
                         "package_id": dataset['id'],
@@ -841,10 +845,12 @@ def _create_resources_from_formats(
                     target_res['name'] = dataset['title'] + " GeoJSON"
                     target_res['last_modified'] = datetime.now().isoformat()
                     if not geojson_created:
+                        logger.debug("Updating GeoJSON Resource")
                         get_action('resource_update')(
                             {'model': model, 'user': _get_username()}, target_res)
                         geojson_created = True
                     else:
+                        logger.debug("Deleting Superfluous GeoJSON Resource")
                         get_action('resource_delete')(
                             {'model': model, 'user': _get_username(), 'ignore_auth': True}, target_res)
 
