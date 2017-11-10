@@ -597,13 +597,13 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
             }),
             headers={'Content-type': 'application/json'},
             auth=(geo_user, geo_pass))
-        if r.ok:
+        if r.status != 500:
+            logger.debug("Succeeded in creating style")
             break
         else:
+            logger.debug("Failed in creating style, will try again in {} seoncds".format(sleep_duration))
             count += 1
             time.sleep(sleep_duration)
-
-    # logger.debug('SLD style create request to {}: {}'.format(url, r))
 
     count = 0
     while count < num_retries:
@@ -612,9 +612,11 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
             data=requests.get(sld_res['url']).content,
             headers={'Content-type': 'application/vnd.ogc.sld+xml'},
             auth=(geo_user, geo_pass))
-        if r.ok:
+        if r.status != 500:
+            logger.debug("Succeeded in uploading SLD")
             break
         else:
+            logger.debug("Failed in uploading SLD, will try again in {} seoncds".format(sleep_duration))
             count += 1
             time.sleep(sleep_duration)
 
@@ -634,13 +636,13 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
             }),
             headers={'Content-type': 'application/json'},
             auth=(geo_user, geo_pass))
-        if r.ok:
+        if r.status != 500:
+            logger.debug("Succeeded in setting SLD to default layer style")
             break
         else:
+            logger.debug("Failed in setting SLD to default layer stlye, will try again in {} seoncds".format(sleep_duration))
             count += 1
             time.sleep(sleep_duration)
-
-            # logger.debug('Setting SLD to default style {}: {}'.format(url, r))
 
 
 def _convert_resources(table_name, temp_dir, shp_resources, kml_resources, tab_resources, grid_resources):
@@ -736,16 +738,16 @@ def _perform_workspace_requests(datastore, workspace, table_name=None):
             data=dsdata,
             headers={'Content-type': 'application/json'},
             auth=(geo_user, geo_pass))
-        if r.ok:
+        if r.status != 500:
+            logger.debug("Succeeded in creating store")
             break
         else:
+            logger.debug("Failed in creating store, will try again in {} seoncds".format(sleep_duration))
             count += 1
             time.sleep(sleep_duration)
 
     if not r.ok:
         _failure("Failed to create Geoserver store {}: {}".format(_base_url, r))
-
-    logger.debug('DataStore request to {}: {}'.format(_base_url, r))
 
 
 def _update_package_with_bbox(bbox, latlngbbox, ftdata,
@@ -920,16 +922,16 @@ def _prepare_everything(
             }),
             headers={'Content-type': 'application/json'},
             auth=(geo_user, geo_pass))
-        if r.ok:
+        if r.status != 500:
+            logger.debug("Succeeded in creating workspace")
             break
         else:
+            logger.debug("Failed in creating workspace, will try again in {} seoncds".format(sleep_duration))
             count += 1
             time.sleep(sleep_duration)
 
     if not r.ok:
         _failure("Failed to create Geoserver workspace {}: {}".format(_base_url, r))
-
-    logger.debug('Workspace request to {}: {}'.format(_base_url, r))
 
     # load bounding boxes from database
     return using_kml, using_grid, table_name, workspace, native_crs
@@ -1101,16 +1103,16 @@ def do_ingesting(dataset_id, force):
                 data=json.dumps(layer_data),
                 headers={'Content-Type': 'application/json'},
                 auth=(geo_user, geo_pass))
-            if r.ok:
+            if r.status != 500:
+                logger.debug("Succeeded in creating layer")
                 break
             else:
+                logger.debug("Failed in creating layer, will try again in {} seoncds".format(sleep_duration))
                 count += 1
                 time.sleep(sleep_duration)
 
         if not r.ok:
             _failure("Failed to create Geoserver layer {}: {}".format(_layer_base_url, r))
-
-        logger.debug('{}: {}'.format(r, r.content))
 
         # With layers created, we can apply any SLDs
         if len(sld_resources):
