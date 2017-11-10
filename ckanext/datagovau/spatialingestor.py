@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib
 from datetime import datetime
 
@@ -53,6 +54,11 @@ logger.addHandler(log_handler)
 logger.setLevel(logging.DEBUG)
 
 logger.info = logger.warn = logger.debug = logger.error = print
+
+# Sometimes the geoserver gets overloaded. So, we re-try a number of times for
+# Post/put queries.
+sleep_duration = 20  # in seconds
+num_retries = 30
 
 
 class IngestionFail(Exception):
@@ -251,10 +257,10 @@ def _group_resources(dataset):
             if '/geoserver' in resource['url']:
                 pass
             elif ("kml" in _format and _valid_source_format("kml")) or (
-                    "kmz" in _format and _valid_source_format("kmz")):
+                            "kmz" in _format and _valid_source_format("kmz")):
                 kml.append(resource)
             elif ("shp" in _format and _valid_source_format("shp")) or (
-                    "shapefile" in _format and _valid_source_format("shapefile")):
+                            "shapefile" in _format and _valid_source_format("shapefile")):
                 shp.append(resource)
             elif "tab" in _format and _valid_source_format("tab"):
                 tab.append(resource)
@@ -579,41 +585,62 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
 
     url = geo_addr + 'rest/workspaces/' + workspace + '/styles'
 
-    r = requests.post(
-        url,
-        data=json.dumps({
-            'style': {
-                'name': name,
-                'filename': name + '.sld'
-            }
-        }),
-        headers={'Content-type': 'application/json'},
-        auth=(geo_user, geo_pass))
+    count = 0
+    while count < num_retries:
+        r = requests.post(
+            url,
+            data=json.dumps({
+                'style': {
+                    'name': name,
+                    'filename': name + '.sld'
+                }
+            }),
+            headers={'Content-type': 'application/json'},
+            auth=(geo_user, geo_pass))
+        if r.ok:
+            break
+        else:
+            count += 1
+            time.sleep(sleep_duration)
 
     # logger.debug('SLD style create request to {}: {}'.format(url, r))
 
-    r = requests.put(
-        url + '/' + name,
-        data=requests.get(sld_res['url']).content,
-        headers={'Content-type': 'application/vnd.ogc.sld+xml'},
-        auth=(geo_user, geo_pass))
+    count = 0
+    while count < num_retries:
+        r = requests.put(
+            url + '/' + name,
+            data=requests.get(sld_res['url']).content,
+            headers={'Content-type': 'application/vnd.ogc.sld+xml'},
+            auth=(geo_user, geo_pass))
+        if r.ok:
+            break
+        else:
+            count += 1
+            time.sleep(sleep_duration)
 
     # logger.debug('SLD upload {}: {}'.format(url, r))
 
-    r = requests.put(
-        geo_addr + 'rest/layers/' + layer_name,
-        data=json.dumps({
-            'layer': {
-                'defaultStyle': {
-                    'name': name,
-                    'workspace': workspace
+    count = 0
+    while count < num_retries:
+        r = requests.put(
+            geo_addr + 'rest/layers/' + layer_name,
+            data=json.dumps({
+                'layer': {
+                    'defaultStyle': {
+                        'name': name,
+                        'workspace': workspace
+                    }
                 }
-            }
-        }),
-        headers={'Content-type': 'application/json'},
-        auth=(geo_user, geo_pass))
+            }),
+            headers={'Content-type': 'application/json'},
+            auth=(geo_user, geo_pass))
+        if r.ok:
+            break
+        else:
+            count += 1
+            time.sleep(sleep_duration)
 
-    # logger.debug('Setting SLD to default style {}: {}'.format(url, r))
+            # logger.debug('Setting SLD to default style {}: {}'.format(url, r))
 
 
 def _convert_resources(table_name, temp_dir, shp_resources, kml_resources, tab_resources, grid_resources):
@@ -702,11 +729,18 @@ def _perform_workspace_requests(datastore, workspace, table_name=None):
     else:
         _base_url += '/datastores'
 
-    r = requests.post(
-        _base_url,
-        data=dsdata,
-        headers={'Content-type': 'application/json'},
-        auth=(geo_user, geo_pass))
+    count = 0
+    while count < num_retries:
+        r = requests.post(
+            _base_url,
+            data=dsdata,
+            headers={'Content-type': 'application/json'},
+            auth=(geo_user, geo_pass))
+        if r.ok:
+            break
+        else:
+            count += 1
+            time.sleep(sleep_duration)
 
     if not r.ok:
         _failure("Failed to create Geoserver store {}: {}".format(_base_url, r))
@@ -811,7 +845,7 @@ def _create_resources_from_formats(
                         "url": ws_addr + "wfs",
                         "wfs_layer": layer_name,
                         "last_modified": datetime.now().isoformat()
-                        })
+                    })
         elif _format in ['json', 'geojson']:
             url = (ws_addr + "wfs?request=GetFeature&typeName=" +
                    layer_name + "&outputFormat=" + urllib.quote('json'))
@@ -875,15 +909,22 @@ def _prepare_everything(
         if r.ok:
             logger.debug('Workspace request to {} succeeded'.format(url))
 
-    r = requests.post(
-        _base_url,
-        data=json.dumps({
-            'workspace': {
-                'name': workspace
-            }
-        }),
-        headers={'Content-type': 'application/json'},
-        auth=(geo_user, geo_pass))
+    count = 0
+    while count < num_retries:
+        r = requests.post(
+            _base_url,
+            data=json.dumps({
+                'workspace': {
+                    'name': workspace
+                }
+            }),
+            headers={'Content-type': 'application/json'},
+            auth=(geo_user, geo_pass))
+        if r.ok:
+            break
+        else:
+            count += 1
+            time.sleep(sleep_duration)
 
     if not r.ok:
         _failure("Failed to create Geoserver workspace {}: {}".format(_base_url, r))
@@ -1053,11 +1094,18 @@ def do_ingesting(dataset_id, force):
         bbox_obj = _update_package_with_bbox(bbox, latlngbbox, layer_data, dataset, native_crs,
                                              bgjson) if bbox and not using_grid else None
 
-        r = requests.post(
-            _layer_base_url,
-            data=json.dumps(layer_data),
-            headers={'Content-Type': 'application/json'},
-            auth=(geo_user, geo_pass))
+        count = 0
+        while count < num_retries:
+            r = requests.post(
+                _layer_base_url,
+                data=json.dumps(layer_data),
+                headers={'Content-Type': 'application/json'},
+                auth=(geo_user, geo_pass))
+            if r.ok:
+                break
+            else:
+                count += 1
+                time.sleep(sleep_duration)
 
         if not r.ok:
             _failure("Failed to create Geoserver layer {}: {}".format(_layer_base_url, r))
