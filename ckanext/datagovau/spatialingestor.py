@@ -755,17 +755,6 @@ def _create_resources_from_formats(
     bbox_str = "&bbox=" + bbox_obj['minx'] + "," + bbox_obj['miny'] + "," + bbox_obj['maxx'] + "," + bbox_obj[
         'maxy'] if bbox_obj else ''
 
-    # Easiest to just delete out all previous geoserver resources and re-create
-    geoserver_resources = filter(
-        lambda x: any(
-            [old_urls in x['url'] and '/geoserver' in x['url'] for old_urls in
-             ['dga.links.com.au', 'data.gov.au']]),
-        dataset['resources'])
-
-    for res in geoserver_resources:
-        get_action('resource_delete')(
-            {'model': model, 'user': _get_username(), 'ignore_auth': True}, res)
-
     for _format in _get_target_formats():  # ['kml', 'image/png']:
         url = (
             ws_addr + "wms?request=GetMap&layers=" +
@@ -849,6 +838,8 @@ def _delete_resources(dataset):
     for res in geoserver_resources:
         get_action('resource_delete')(
             {'model': model, 'user': _get_username(), 'ignore_auth': True}, res)
+
+    return _get_dataset_from_id(dataset['id'])
 
 
 def _prepare_everything(
@@ -1081,7 +1072,7 @@ def do_ingesting(dataset_id, force):
         ws_addr = geo_public_addr + _get_valid_qname(dataset['name']) + "/"
 
         # Delete out all geoserver resources before rebuilding (this simplifies update logic)
-        _delete_resources(dataset)
+        dataset = _delete_resources(dataset)
 
         existing_formats = []
         for resource in dataset['resources']:
@@ -1089,11 +1080,6 @@ def do_ingesting(dataset_id, force):
 
         _create_resources_from_formats(
             ws_addr, layer_name, bbox_obj, existing_formats, dataset)
-
-        # Update dataset for legacy format removal
-        dataset = get_action('package_show')(
-            {'model': model, 'user': _get_username(), 'ignore_auth': True},
-            {'id': dataset_id})
 
         _success()
     except IngestionSkip as e:
