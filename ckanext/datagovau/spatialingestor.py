@@ -886,7 +886,7 @@ def _prepare_everything(
         auth=(geo_user, geo_pass))
 
     if not r.ok:
-        _failure("Failed to create Geoserver workspace {}: {}".format(url, r))
+        _failure("Failed to create Geoserver workspace {}: {}".format(_base_url, r))
 
     logger.debug('Workspace request to {}: {}'.format(_base_url, r))
 
