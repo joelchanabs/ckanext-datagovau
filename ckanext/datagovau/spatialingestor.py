@@ -643,7 +643,8 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
                 logger.debug("Succeeded in setting SLD to default layer style")
             break
         else:
-            logger.debug("Failed in setting SLD to default layer stlye, will try again in {} seoncds".format(sleep_duration))
+            logger.debug(
+                "Failed in setting SLD to default layer stlye, will try again in {} seoncds".format(sleep_duration))
             count += 1
             time.sleep(sleep_duration)
 
@@ -736,6 +737,10 @@ def _perform_workspace_requests(datastore, workspace, table_name=None):
 
     count = 0
     while count < num_retries:
+        r = requests.head(_base_url + '/' + datastore, auth=(geo_user, geo_pass))
+        if r.ok:
+            break
+
         r = requests.post(
             _base_url,
             data=dsdata,
@@ -746,7 +751,8 @@ def _perform_workspace_requests(datastore, workspace, table_name=None):
                 logger.debug("Succeeded in creating store")
             break
         else:
-            logger.debug("Failed in creating store, will try again in {} seoncds".format(sleep_duration))
+            logger.debug("Failed in creating store: {} {}. Will try again in {} seoncds".format(_base_url, r.content,
+                                                                                                sleep_duration))
             count += 1
             time.sleep(sleep_duration)
 
@@ -917,6 +923,10 @@ def _prepare_everything(
 
     count = 0
     while count < num_retries:
+        r = requests.head(_ws_url, auth=(geo_user, geo_pass))
+        if r.ok:
+            break
+
         r = requests.post(
             _base_url,
             data=json.dumps({
@@ -931,7 +941,9 @@ def _prepare_everything(
                 logger.debug("Succeeded in creating workspace")
             break
         else:
-            logger.debug("Failed in creating workspace, will try again in {} seoncds".format(sleep_duration))
+            logger.debug(
+                "Failed in creating workspace: {} {}. Will try again in {} seoncds".format(_base_url, r.content,
+                                                                                           sleep_duration))
             count += 1
             time.sleep(sleep_duration)
 
@@ -1103,6 +1115,10 @@ def do_ingesting(dataset_id, force):
 
         count = 0
         while count < num_retries:
+            r = requests.head(_layer_base_url + '/' + layer_name, auth=(geo_user, geo_pass))
+            if r.ok:
+                break
+
             r = requests.post(
                 _layer_base_url,
                 data=json.dumps(layer_data),
@@ -1113,7 +1129,9 @@ def do_ingesting(dataset_id, force):
                     logger.debug("Succeeded in creating layer")
                 break
             else:
-                logger.debug("Failed in creating layer, will try again in {} seoncds".format(sleep_duration))
+                logger.debug(
+                    "Failed in creating layer: {} {}. Will try again in {} seoncds".format(_layer_base_url, r.content,
+                                                                                           sleep_duration))
                 count += 1
                 time.sleep(sleep_duration)
 
