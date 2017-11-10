@@ -597,8 +597,9 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
             }),
             headers={'Content-type': 'application/json'},
             auth=(geo_user, geo_pass))
-        if r.status != 500:
-            logger.debug("Succeeded in creating style")
+        if r.status_code != 500:
+            if r.ok:
+                logger.debug("Succeeded in creating style")
             break
         else:
             logger.debug("Failed in creating style, will try again in {} seoncds".format(sleep_duration))
@@ -612,8 +613,9 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
             data=requests.get(sld_res['url']).content,
             headers={'Content-type': 'application/vnd.ogc.sld+xml'},
             auth=(geo_user, geo_pass))
-        if r.status != 500:
-            logger.debug("Succeeded in uploading SLD")
+        if r.status_code != 500:
+            if r.ok:
+                logger.debug("Succeeded in uploading SLD")
             break
         else:
             logger.debug("Failed in uploading SLD, will try again in {} seoncds".format(sleep_duration))
@@ -636,8 +638,9 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
             }),
             headers={'Content-type': 'application/json'},
             auth=(geo_user, geo_pass))
-        if r.status != 500:
-            logger.debug("Succeeded in setting SLD to default layer style")
+        if r.status_code != 500:
+            if r.ok:
+                logger.debug("Succeeded in setting SLD to default layer style")
             break
         else:
             logger.debug("Failed in setting SLD to default layer stlye, will try again in {} seoncds".format(sleep_duration))
@@ -738,8 +741,9 @@ def _perform_workspace_requests(datastore, workspace, table_name=None):
             data=dsdata,
             headers={'Content-type': 'application/json'},
             auth=(geo_user, geo_pass))
-        if r.status != 500:
-            logger.debug("Succeeded in creating store")
+        if r.status_code != 500:
+            if r.ok:
+                logger.debug("Succeeded in creating store")
             break
         else:
             logger.debug("Failed in creating store, will try again in {} seoncds".format(sleep_duration))
@@ -922,8 +926,9 @@ def _prepare_everything(
             }),
             headers={'Content-type': 'application/json'},
             auth=(geo_user, geo_pass))
-        if r.status != 500:
-            logger.debug("Succeeded in creating workspace")
+        if r.status_code != 500:
+            if r.ok:
+                logger.debug("Succeeded in creating workspace")
             break
         else:
             logger.debug("Failed in creating workspace, will try again in {} seoncds".format(sleep_duration))
@@ -1103,8 +1108,9 @@ def do_ingesting(dataset_id, force):
                 data=json.dumps(layer_data),
                 headers={'Content-Type': 'application/json'},
                 auth=(geo_user, geo_pass))
-            if r.status != 500:
-                logger.debug("Succeeded in creating layer")
+            if r.status_code != 500:
+                if r.ok:
+                    logger.debug("Succeeded in creating layer")
                 break
             else:
                 logger.debug("Failed in creating layer, will try again in {} seoncds".format(sleep_duration))
