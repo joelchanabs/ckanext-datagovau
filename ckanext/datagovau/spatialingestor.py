@@ -964,10 +964,11 @@ def check_if_may_skip(dataset_id, force=False):
     return dataset
 
 
-def clean_assets(dataset_id, skip_grids=False):
+def clean_assets(dataset_id, skip_grids=False, display=False):
     dataset = _get_dataset_from_id(dataset_id)
 
-    logger.debug("Cleaning out assets for dataset: {}".format(dataset_id))
+    if display:
+        logger.debug("Cleaning out assets for dataset: {}".format(dataset_id))
 
     if dataset:
         # Skip cleaning datasets that may have a manually ingested grid
@@ -1006,7 +1007,8 @@ def clean_assets(dataset_id, skip_grids=False):
             get_action('resource_delete')(
                 {'model': model, 'user': _get_username(), 'ignore_auth': True}, res)
 
-    logger.debug("Done cleaning out assets!")
+    if display:
+        logger.debug("Done cleaning out assets!")
 
 
 def do_ingesting(dataset_id, force):
@@ -1125,7 +1127,7 @@ def do_ingesting(dataset_id, force):
         clean_assets(dataset_id)
     except Exception as e:
         logger.error("failed to ingest {0} with error {1}".format(dataset_id, e))
-        clean_assets(dataset_id)
+        clean_assets(dataset_id, display=True)
     finally:
         if tempdir:
             _clean_dir(tempdir)

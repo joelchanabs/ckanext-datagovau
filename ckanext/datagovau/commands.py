@@ -112,7 +112,7 @@ class SpatialIngestor(CkanCommand):
                     clean_assets(pkg_id, skip_grids=True)
         else:
             # log.info("Ingesting %s" % scope)
-            clean_assets(scope)
+            clean_assets(scope, display=True)
 
 
 class ReconcileGeoserverAndDatastore(CkanCommand):
