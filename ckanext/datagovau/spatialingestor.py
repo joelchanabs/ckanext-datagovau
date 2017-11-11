@@ -25,7 +25,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 import urllib
 from datetime import datetime
 
@@ -269,7 +268,7 @@ def _group_resources(dataset):
             elif "sld" in _format:
                 sld.append(resource)
 
-    return kml, shp, grid, sld, tab
+    return shp, kml, tab, grid, sld
 
 
 def _clear_old_table(dataset):
@@ -302,12 +301,18 @@ def _load_esri_shapefiles(shp_res, table_name, tempdir):
     shp_res['url'] = shp_res['url'].replace('https', 'http')
     logger.debug(
         "Using SHP file " + shp_res['url'])
-    (filepath, headers) = urllib.urlretrieve(
-        shp_res['url'], "input.zip")
-    logger.debug('SHP downloaded')
 
-    subprocess.call(['unzip', '-j', filepath])
-    logger.debug('SHP unzipped')
+    if not any([shp_res['url'].lower().endswith(x) for x in ["shp", "shapefile"]]):
+        (filepath, headers) = urllib.urlretrieve(
+            shp_res['url'], "input.zip")
+        logger.debug('SHP downloaded')
+
+        subprocess.call(['unzip', '-j', filepath])
+        logger.debug('SHP unzipped')
+    else:
+        urllib.urlretrieve(
+            shp_res['url'], "input.shp")
+        logger.debug('SHP downloaded')
 
     shpfiles = glob.glob("*.[sS][hH][pP]")
     prjfiles = glob.glob("*.[pP][rR][jJ]")
@@ -920,8 +925,18 @@ def check_if_may_skip(dataset_id, force=False):
     if dataset.get('state', '') != 'active':
         raise IngestionSkip('Dataset must be active to ingest')
 
+    (shp_resources, kml_resources, tab_resources, grid_resources, sld_resources) = _group_resources(dataset)
+
+    grouped_resources = (shp_resources, kml_resources, tab_resources, grid_resources)
+    all_resources = (shp_resources, kml_resources, tab_resources, grid_resources, sld_resources)
+
+    if not any(grouped_resources):
+        raise IngestionSkip("No geodata format files detected")
+    if any([len(x) > 1 for x in grouped_resources]):
+        raise IngestionSkip("Can not determine unique spatial file to ingest")
+
     if force:
-        return dataset
+        return dataset, all_resources
 
     activity_list = get_action('package_activity_list')(
         {'user': _get_username(), 'model': model},
@@ -934,7 +949,7 @@ def check_if_may_skip(dataset_id, force=False):
     if activity_list and activity_list[0]['user_id'] == user['id']:
         raise IngestionSkip('Not updated since last ingest')
 
-    return dataset
+    return dataset, all_resources
 
 
 def clean_assets(dataset_id, skip_grids=False, display=False):
@@ -979,14 +994,9 @@ def clean_assets(dataset_id, skip_grids=False, display=False):
 def do_ingesting(dataset_id, force):
     tempdir = None
     try:
-        dataset = check_if_may_skip(dataset_id, force)
+        dataset, grouped_resources = check_if_may_skip(dataset_id, force)
 
-        grouped_resources = _group_resources(dataset)
-        (kml_resources,
-         shp_resources, grid_resources,
-         sld_resources, tab_resources) = grouped_resources
-        if not any(grouped_resources):
-            raise IngestionSkip("No geodata format files detected")
+        (shp_resources, kml_resources, tab_resources, grid_resources, sld_resources) = grouped_resources
 
         logger.info('Ingesting {}'.format(dataset['id']))
 
