@@ -61,7 +61,7 @@ def get_ddg_site_statistics():
         stats['api_count'] = logic.get_action('resource_search')({}, {"query": ["format:wms"]})['count'] + len(
             datastore_db.get_all_resources_ids_in_datastore())
 
-        if 'unpug_data_count' not in stats:
+        if 'unpub_data_count' not in stats:
             stats['unpub_data_count'] = 0
 
         return stats
