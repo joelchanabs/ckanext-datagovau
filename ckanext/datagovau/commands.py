@@ -253,7 +253,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
             sys.stdout.write(" Found {0} Tables".format(len(postgis_tables)))
 
         # Get geoserver workspaces
-        geoserver_url = 'https://' + geoserver_info['db_host']
+        geoserver_url = 'http://' + geoserver_info['db_host']
         if geoserver_info.get('db_port', '') != '':
             geoserver_url += ':' + geoserver_info['db_port']
         geoserver_url += '/' + geoserver_info['db_name'] + '/'
