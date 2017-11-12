@@ -146,7 +146,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
 
         datastore_postgis_same = config.get(
             'ckanext.datagovau.datastore.url') == config.get(
-            'ckanext.datagovau.postgis.url')
+            'ckanext.datagovau.spatialingestor.postgis.url')
 
         dry_run = (len(self.args) == 1 and self.args[0].lower() == "dry-run")
         clean_all = (len(self.args) == 1
@@ -243,7 +243,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                 where
                 r.rolname = '{0}' and c.relkind = 'r'
                 order by
-                c.relname""".format(datastore_info['db_user']))
+                c.relname""".format(postgis_info['db_user']))
             postgis_tables = [r[0] for r in cursor.fetchall()]
             connection.commit()
             connection.close()
@@ -360,10 +360,7 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                                        res_dict['url'])
                     if re_res:
                         ws_name = re_res.group(1)
-                        if (ws_name in ws_without_table
-                            ) or not (ws_name in geoserver_workspaces) or (
-                                    'outputformat=csv' in res_dict.get(
-                                    'url', '').lower()):
+                        if (ws_name in ws_without_table) or not (ws_name in geoserver_workspaces):
                             resources_to_delete.add(res_dict['id'])
                             res_delete = True
                         elif ws_name in filestore_workspaces:

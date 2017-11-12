@@ -372,7 +372,7 @@ def _load_esri_shapefiles(shp_res, table_name, tempdir):
         '-lco', 'GEOMETRY_NAME=geom',
         "-lco", "PRECISION=NO",
         '-nln', table_name,
-        '-s_srs', native_crs,
+        '-a_srs', native_crs,
         '-nlt', 'PROMOTE_TO_MULTI',
         '-overwrite'
     ]
@@ -464,7 +464,6 @@ def _load_kml_resources(kml_res, table_name):
         '-lco', 'GEOMETRY_NAME=geom',
         "-lco", "PRECISION=NO",
         '-nln', table_name,
-        '-t_srs', native_crs,
         '-nlt', 'PROMOTE_TO_MULTI',
         '-overwrite'
     ]
