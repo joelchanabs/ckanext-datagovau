@@ -62,6 +62,8 @@ class SpatialIngestor(CkanCommand):
             self._ingest(self.args[1])
         elif self.args[0] == 'purge':
             self._purge(self.args[1])
+        elif self.args[0] == 'dropuser':
+            self._drop_user(self.args[1])
 
     def _ingest(self, scope):
         if scope in ('all', 'updated'):
@@ -113,6 +115,34 @@ class SpatialIngestor(CkanCommand):
         else:
             # log.info("Ingesting %s" % scope)
             clean_assets(scope, display=True)
+
+    def _drop_user(self, username):
+        user = model.User.get(username)
+        if user is None:
+            print('User <%s> not found' % username)
+            return
+        groups = user.get_groups()
+        if groups:
+            print('User is a member of groups/organizations: %s' % ', '.join(
+                [g.title or g.name for g in groups]
+            ))
+            return
+        pkgs = model.Session.query(model.Package).filter_by(
+            creator_user_id=user.id)
+        if pkgs.count():
+            print('There are some(%d) datasets created by this user: %s'
+                  % (pkgs.count(), [pkg.name for pkg in pkgs]))
+            return
+        activities = model.Session.query(model.Activity).filter_by(
+            user_id=user.id
+        ).filter(model.Activity.activity_type.contains('package'))
+        if activities.count():
+            print('There are some(%d) activity records that mentions user'
+                  % activities.count())
+            return
+        model.Session.delete(user)
+        model.Session.commit()
+        print('Done')
 
 
 class ReconcileGeoserverAndDatastore(CkanCommand):
