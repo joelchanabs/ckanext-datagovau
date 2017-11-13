@@ -372,7 +372,7 @@ def _load_esri_shapefiles(shp_res, table_name, tempdir):
         '-lco', 'GEOMETRY_NAME=geom',
         "-lco", "PRECISION=NO",
         '-nln', table_name,
-        '-a_srs', native_crs,
+        '-t_srs', native_crs,
         '-nlt', 'PROMOTE_TO_MULTI',
         '-overwrite'
     ]
@@ -465,6 +465,7 @@ def _load_kml_resources(kml_res, table_name):
         "-lco", "PRECISION=NO",
         '-nln', table_name,
         '-nlt', 'PROMOTE_TO_MULTI',
+        '-t_srs', native_crs,
         '-overwrite'
     ]
 
@@ -726,14 +727,20 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
             ")", "").replace(",", " ").split(" ")
 
     minx, miny, maxx, maxy = _clear_box(bbox)
-    bbox_obj = {'minx': minx, 'maxx': maxx, 'miny': miny, 'maxy': maxy}
+    bbox_obj = {
+        'minx': minx,
+        'maxx': maxx,
+        'miny': miny,
+        'maxy': maxy,
+        'crs': native_crs}
 
     llminx, llminy, llmaxx, llmaxy = _clear_box(latlngbbox)
     llbbox_obj = {
         'minx': llminx,
         'maxx': llmaxx,
         'miny': llminy,
-        'maxy': llmaxy
+        'maxy': llmaxy,
+        'crs': 'EPSG:4326'
     }
 
     ftdata['featureType']['nativeBoundingBox'] = bbox_obj
@@ -744,7 +751,7 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
                  native_crs)
     else:
         ftdata['featureType']['srs'] = native_crs
-        logger.debug('bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
+        #logger.debug('bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
         if 'spatial' not in dataset or dataset['spatial'] != bgjson:
             dataset['spatial'] = bgjson
             update = True
@@ -1016,7 +1023,7 @@ def do_ingesting(dataset_id, force):
         if not using_grid:
             bbox, latlngbbox, bgjson = _get_geojson(
                 using_kml, table_name)
-            logger.debug(bbox)
+            #logger.debug(bbox)
 
         datastore = workspace
         if using_grid:
