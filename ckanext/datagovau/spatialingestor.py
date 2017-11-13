@@ -447,7 +447,7 @@ def _load_kml_resources(kml_res, table_name):
     element = find(tree)
     if len(element):
         for x in range(0, len(element)):
-            print(element[x].text)
+            # print(element[x].text)
             element[x].text = table_name
     else:
         logger.debug('no Folder tag found')
@@ -662,7 +662,7 @@ def _get_geojson(using_kml, table_name):
         'ST_AsGeoJSON(ST_Extent(ST_Transform(geom,4326))) as geojson '
         'from "{}"').format(table_name)
     cur.execute(select_query)
-    logger.debug(select_query)
+    #logger.debug(select_query)
 
     bbox, latlngbbox, bgjson = cur.fetchone()
     cur.close()
@@ -699,7 +699,7 @@ def _perform_workspace_requests(datastore, workspace, table_name=None):
             }
         })
 
-    logger.debug(dsdata)
+    #logger.debug(dsdata)
 
     geo_addr, geo_user, geo_pass, geo_public_addr = _get_geoserver_data()
     # POST creates, PUT updates
