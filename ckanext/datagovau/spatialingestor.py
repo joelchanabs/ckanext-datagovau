@@ -520,11 +520,15 @@ def _load_tab_resources(tab_res, table_name):
 def _load_tiff_resources(tiff_res, table_name):
     url = tiff_res['url'].replace('https', 'http')
     logger.debug("using GeoTIFF file " + url)
-    filepath, headers = urllib.urlretrieve(url, "input.zip")
-    logger.debug("GeoTIFF archive downlaoded")
 
-    subprocess.call(['unzip', '-j', filepath])
-    logger.debug("GeoTIFF unziped")
+    if not any([url.lower().endwith(x) for x in ['tif', 'tiff']]):
+        filepath, headers = urllib.urlretrieve(url, "input.zip")
+        logger.debug("GeoTIFF archive downlaoded")
+
+        subprocess.call(['unzip', '-j', filepath])
+        logger.debug("GeoTIFF unziped")
+    else:
+        urllib.urlretrieve(url, "input.tiff")
 
     tifffiles = glob.glob("*.[tT][iI][fF]") + glob.glob("*.[tT][iI][fF][fF]")
     if len(tifffiles) == 0:
