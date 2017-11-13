@@ -521,7 +521,7 @@ def _load_tiff_resources(tiff_res, table_name):
     url = tiff_res['url'].replace('https', 'http')
     logger.debug("using GeoTIFF file " + url)
 
-    if not any([url.lower().endwith(x) for x in ['tif', 'tiff']]):
+    if not any([url.lower().endswith(x) for x in ['tif', 'tiff']]):
         filepath, headers = urllib.urlretrieve(url, "input.zip")
         logger.debug("GeoTIFF archive downlaoded")
 
@@ -532,7 +532,7 @@ def _load_tiff_resources(tiff_res, table_name):
 
     tifffiles = glob.glob("*.[tT][iI][fF]") + glob.glob("*.[tT][iI][fF][fF]")
     if len(tifffiles) == 0:
-        _failure("No TIFF files found in zip " + tiff_res['url'])
+        _failure("No TIFF files found in " + tiff_res['url'])
 
     native_crs = 'EPSG:4326'
 
