@@ -238,11 +238,12 @@ def _failure(msg):
 
 
 def _group_resources(dataset):
-    kml = []
     shp = []
+    kml = []
+    tab = []
+    tiff = []
     grid = []
     sld = []
-    tab = []
 
     source_formats = map(lambda x: x.lower(), _get_source_formats())
 
@@ -265,10 +266,12 @@ def _group_resources(dataset):
                 tab.append(resource)
             elif "grid" in _format and _valid_source_format("grid"):
                 grid.append(resource)
+            elif "geotif" in _format and _valid_source_format("geotif"):
+                tiff.append(resource)
             elif "sld" in _format:
                 sld.append(resource)
 
-    return shp, kml, tab, grid, sld
+    return shp, kml, tab, tiff, grid, sld
 
 
 def _clear_old_table(dataset):
@@ -514,6 +517,47 @@ def _load_tab_resources(tab_res, table_name):
     return native_crs
 
 
+def _load_tiff_resources(tiff_res, table_name):
+    url = tiff_res['url'].replace('https', 'http')
+    logger.debug("using GeoTIFF file " + url)
+    filepath, headers = urllib.urlretrieve(url, "input.zip")
+    logger.debug("GeoTIFF archive downlaoded")
+
+    subprocess.call(['unzip', '-j', filepath])
+    logger.debug("GeoTIFF unziped")
+
+    tifffiles = glob.glob("*.[tT][iI][fF]+")
+    if len(tifffiles) == 0:
+        _failure("No TIFF files found in zip " + tiff_res['url'])
+
+    tiff_file = table_name + ".tiff"
+
+    os.rename(tifffiles[0], tiff_file)
+
+    native_crs = 'EPSG:4326'
+
+    data_output_dir = _create_geoserver_data_dir(table_name)
+
+    pargs = [
+        '',
+        '-v',
+        '-r', 'near',
+        '-levels', '3',
+        '-ps', '1024', '1024',
+        '-co', 'TILED=YES',
+        '-co', 'COMPRESS=PACKBITS',
+        # '-co', 'COMPRESS=CCITTFAX4',
+        # '-co', 'NBITS=1',
+        '-targetDir', data_output_dir,
+        tiff_file
+    ]
+
+    gdal_retile.main(pargs)
+
+    _set_geoserver_ownership(data_output_dir)
+    return native_crs
+
+
 def _load_grid_resources(grid_res, table_name, tempdir):
     grid_res['url'] = grid_res['url'].replace('https', 'http')
     logger.debug("Using ArcGrid file " + grid_res['url'])
@@ -623,7 +667,8 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
         auth=(geo_user, geo_pass))
 
 
-def _convert_resources(table_name, temp_dir, shp_resources, kml_resources, tab_resources, grid_resources):
+def _convert_resources(table_name, temp_dir, shp_resources, kml_resources, tab_resources, tiff_resources,
+                       grid_resources):
     using_kml = False
     using_grid = False
     native_crs = ''
@@ -635,6 +680,9 @@ def _convert_resources(table_name, temp_dir, shp_resources, kml_resources, tab_r
         native_crs = _load_kml_resources(kml_resources[0], table_name)
     elif len(tab_resources):
         native_crs = _load_tab_resources(tab_resources[0], table_name)
+    elif len(tiff_resources):
+        using_grid = True
+        native_crs = _load_tiff_resources(tiff_resources[0], table_name)
     elif len(grid_resources):
         using_grid = True
         native_crs = _load_grid_resources(grid_resources[0], table_name, temp_dir)
@@ -662,7 +710,7 @@ def _get_geojson(using_kml, table_name):
         'ST_AsGeoJSON(ST_Extent(ST_Transform(geom,4326))) as geojson '
         'from "{}"').format(table_name)
     cur.execute(select_query)
-    #logger.debug(select_query)
+    # logger.debug(select_query)
 
     bbox, latlngbbox, bgjson = cur.fetchone()
     cur.close()
@@ -699,7 +747,7 @@ def _perform_workspace_requests(datastore, workspace, table_name=None):
             }
         })
 
-    #logger.debug(dsdata)
+    # logger.debug(dsdata)
 
     geo_addr, geo_user, geo_pass, geo_public_addr = _get_geoserver_data()
     # POST creates, PUT updates
@@ -751,7 +799,7 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
                  native_crs)
     else:
         ftdata['featureType']['srs'] = native_crs
-        #logger.debug('bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
+        # logger.debug('bgjson({}), llbox_obj({})'.format(bgjson, llbbox_obj))
         if 'spatial' not in dataset or dataset['spatial'] != bgjson:
             dataset['spatial'] = bgjson
             update = True
@@ -855,7 +903,7 @@ def _delete_resources(dataset):
 
 def _prepare_everything(
         dataset,
-        shp_resources, kml_resources, tab_resources, grid_resources,
+        shp_resources, kml_resources, tab_resources, tiff_resources, grid_resources,
         tempdir):
     # clear old data table
     table_name = _clear_old_table(dataset)
@@ -867,7 +915,7 @@ def _prepare_everything(
         _convert_resources(
             table_name,
             tempdir,
-            shp_resources, kml_resources, tab_resources, grid_resources)
+            shp_resources, kml_resources, tab_resources, tiff_resources, grid_resources)
 
     # create geoserver workspace/layers http://boundlessgeo.com
     # /2012/10/adding-layers-to-geoserver-using-the-rest-api/
@@ -931,10 +979,11 @@ def check_if_may_skip(dataset_id, force=False):
     if dataset.get('state', '') != 'active':
         raise IngestionSkip('Dataset must be active to ingest')
 
-    (shp_resources, kml_resources, tab_resources, grid_resources, sld_resources) = _group_resources(dataset)
+    (shp_resources, kml_resources, tab_resources, tiff_resources, grid_resources, sld_resources) = _group_resources(
+        dataset)
 
-    grouped_resources = (shp_resources, kml_resources, tab_resources, grid_resources)
-    all_resources = (shp_resources, kml_resources, tab_resources, grid_resources, sld_resources)
+    grouped_resources = (shp_resources, kml_resources, tab_resources, tiff_resources, grid_resources)
+    all_resources = (shp_resources, kml_resources, tab_resources, tiff_resources, grid_resources, sld_resources)
 
     if not any(grouped_resources):
         raise IngestionSkip("No geodata format files detected")
@@ -966,7 +1015,9 @@ def clean_assets(dataset_id, skip_grids=False, display=False):
 
     if dataset:
         # Skip cleaning datasets that may have a manually ingested grid
-        if 'resources' in dataset and skip_grids and any(['grid' in x['format'].lower() for x in dataset['resources']]):
+        if 'resources' in dataset and skip_grids and (
+                    any(['grid' in x['format'].lower() for x in dataset['resources']]) or any(
+                    ['geotif' in x['format'].lower() for x in dataset['resources']])):
             return
 
         # clear old data table
@@ -1023,7 +1074,7 @@ def do_ingesting(dataset_id, force):
         if not using_grid:
             bbox, latlngbbox, bgjson = _get_geojson(
                 using_kml, table_name)
-            #logger.debug(bbox)
+            # logger.debug(bbox)
 
         datastore = workspace
         if using_grid:
