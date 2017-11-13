@@ -526,15 +526,30 @@ def _load_tiff_resources(tiff_res, table_name):
     subprocess.call(['unzip', '-j', filepath])
     logger.debug("GeoTIFF unziped")
 
-    tifffiles = glob.glob("*.[tT][iI][fF]+")
+    tifffiles = glob.glob("*.[tT][iI][fF]") + glob.glob("*.[tT][iI][fF][fF]")
     if len(tifffiles) == 0:
         _failure("No TIFF files found in zip " + tiff_res['url'])
 
-    tiff_file = table_name + ".tiff"
-
-    os.rename(tifffiles[0], tiff_file)
-
     native_crs = 'EPSG:4326'
+
+    pargs = [
+        'gdalwarp',
+        '--config', 'GDAL_CACHEMAX', '500',
+        '-wm', '500',
+        '-multi',
+        '-t_srs', native_crs,
+        '-of', 'GTiff',
+        '-co', 'TILED=YES',
+        '-co', 'TFW=YES',
+        '-co', 'BIGTIFF=YES',
+        '-co', 'COMPRESS=PACKBITS',
+        # '-co', 'COMPRESS=CCITTFAX4',
+        # '-co', 'NBITS=1',
+        tifffiles[0],
+        table_name + ".tiff"
+    ]
+
+    subprocess.call(pargs)
 
     data_output_dir = _create_geoserver_data_dir(table_name)
 
@@ -549,7 +564,7 @@ def _load_tiff_resources(tiff_res, table_name):
         # '-co', 'COMPRESS=CCITTFAX4',
         # '-co', 'NBITS=1',
         '-targetDir', data_output_dir,
-        tiff_file
+        table_name + ".tiff"
     ]
 
     gdal_retile.main(pargs)
@@ -1053,7 +1068,7 @@ def do_ingesting(dataset_id, force):
     try:
         dataset, grouped_resources = check_if_may_skip(dataset_id, force)
 
-        (shp_resources, kml_resources, tab_resources, grid_resources, sld_resources) = grouped_resources
+        (shp_resources, kml_resources, tab_resources, tiff_resources, grid_resources, sld_resources) = grouped_resources
 
         logger.info('Ingesting {}'.format(dataset['id']))
 
@@ -1066,7 +1081,7 @@ def do_ingesting(dataset_id, force):
          table_name,
          workspace, native_crs) = _prepare_everything(
             dataset,
-            shp_resources, kml_resources, tab_resources, grid_resources,
+            shp_resources, kml_resources, tab_resources, tiff_resources, grid_resources,
             tempdir)
 
         # load bounding boxes from database
