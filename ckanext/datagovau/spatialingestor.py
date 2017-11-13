@@ -825,7 +825,7 @@ def _update_package_with_bbox(bbox, latlngbbox, ftdata,
 
 
 def _create_resources_from_formats(
-        ws_addr, layer_name, bbox_obj, existing_formats, dataset):
+        ws_addr, layer_name, bbox_obj, existing_formats, dataset, using_grid):
     bbox_str = "&bbox=" + bbox_obj['minx'] + "," + bbox_obj['miny'] + "," + bbox_obj['maxx'] + "," + bbox_obj[
         'maxy'] if bbox_obj else ''
 
@@ -886,7 +886,7 @@ def _create_resources_from_formats(
                         "wfs_layer": layer_name,
                         "last_modified": datetime.now().isoformat()
                     })
-        elif _format in ['json', 'geojson']:
+        elif _format in ['json', 'geojson'] and not using_grid:
             url = (ws_addr + "wfs?request=GetFeature&typeName=" +
                    layer_name + "&outputFormat=" + urllib.quote('json'))
             if not any([x in existing_formats for x in ["json", "geojson"]]):
@@ -1158,7 +1158,7 @@ def do_ingesting(dataset_id, force):
             existing_formats.append(resource['format'].lower())
 
         _create_resources_from_formats(
-            ws_addr, layer_name, bbox_obj, existing_formats, dataset)
+            ws_addr, layer_name, bbox_obj, existing_formats, dataset, using_grid)
 
         _success()
     except IngestionSkip as e:
