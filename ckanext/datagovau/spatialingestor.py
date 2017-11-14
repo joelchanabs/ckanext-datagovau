@@ -24,6 +24,7 @@ import pwd
 import shutil
 import subprocess
 import sys
+import time
 import tempfile
 import urllib
 from datetime import datetime
@@ -202,7 +203,7 @@ def _get_dataset_from_id(dataset_id):
 
 def _clean_dir(tempdir):
     try:
-        shutil.rmtree(tempdir)
+        shutil.rmtree(tempdir, ignore_errors=True)
     except:
         pass
 
@@ -927,6 +928,9 @@ def _prepare_everything(
     # clear old data table
     table_name = _clear_old_table(dataset)
 
+    # clear out old filestore
+    _clean_dir(_get_geoserver_data_dir(table_name))
+
     # download resource to tmpfile
     os.chdir(tempdir)
     logger.debug(tempdir + " created")
@@ -944,7 +948,13 @@ def _prepare_everything(
 
     _base_url = geo_addr + 'rest/workspaces'
     _ws_url = _base_url + '/' + workspace
-    r = requests.head(_ws_url, auth=(geo_user, geo_pass))
+
+    while True:
+        try:
+            r = requests.head(_ws_url, auth=(geo_user, geo_pass))
+            break
+        except:
+            time.sleep(10)
 
     if r.ok:
         logger.debug("Workspace found to be pre-existing: {}".format(workspace))
@@ -1053,7 +1063,13 @@ def clean_assets(dataset_id, skip_grids=False, display=False):
 
         _base_url = geo_addr + 'rest/workspaces'
         _ws_url = _base_url + '/' + workspace
-        r = requests.head(_ws_url, auth=(geo_user, geo_pass))
+
+        while True:
+            try:
+                r = requests.head(_ws_url, auth=(geo_user, geo_pass))
+                break
+            except:
+                time.sleep(10)
 
         if r.ok:
             url = _ws_url + '?recurse=true&quietOnNotFound'
