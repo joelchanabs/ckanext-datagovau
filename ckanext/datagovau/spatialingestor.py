@@ -531,13 +531,34 @@ def _load_tiff_resources(tiff_res, table_name, tempdir):
     else:
         urllib.urlretrieve(url, "input.tiff")
 
+    tifffiles = glob.glob("*.[tT][iI][fF]") + glob.glob("*.[tT][iI][fF][fF]")
+    if len(tifffiles) == 0:
+        _failure("No TIFF files found in " + tiff_res['url'])
+
     native_crs = 'EPSG:4326'
+
+    pargs = [
+        'gdalwarp',
+        '--config', 'GDAL_CACHEMAX', '500',
+        '-wm', '500',
+        '-multi',
+        '-t_srs', native_crs,
+        '-of', 'GTiff',
+        '-co', 'TILED=YES',
+        '-co', 'TFW=YES',
+        '-co', 'BIGTIFF=YES',
+        '-co', 'COMPRESS=PACKBITS',
+        tempdir,
+        table_name + "_temp1.tiff"
+    ]
+
+    subprocess.call(pargs)
 
     pargs = [
         'gdal_translate',
         '-ot', 'Byte',
-        tempdir,
-        table_name + "_temp.tiff"
+        table_name + "_temp1.tiff",
+        table_name + "_temp2.tiff"
     ]
 
     subprocess.call(pargs)
@@ -552,10 +573,9 @@ def _load_tiff_resources(tiff_res, table_name, tempdir):
         '-co', 'TILED=YES',
         '-co', 'TFW=YES',
         '-co', 'BIGTIFF=YES',
-        #'-co', 'COMPRESS=PACKBITS',
         '-co', 'COMPRESS=CCITTFAX4',
         '-co', 'NBITS=1',
-        table_name + "_temp.tiff",
+        table_name + "_temp2.tiff",
         table_name + ".tiff"
     ]
 
@@ -570,7 +590,6 @@ def _load_tiff_resources(tiff_res, table_name, tempdir):
         '-levels', '3',
         '-ps', '1024', '1024',
         '-co', 'TILED=YES',
-        #'-co', 'COMPRESS=PACKBITS',
         '-co', 'COMPRESS=CCITTFAX4',
         '-co', 'NBITS=1',
         '-targetDir', data_output_dir,
@@ -596,10 +615,27 @@ def _load_grid_resources(grid_res, table_name, tempdir):
     native_crs = 'EPSG:4326'
 
     pargs = [
+        'gdalwarp',
+        '--config', 'GDAL_CACHEMAX', '500',
+        '-wm', '500',
+        '-multi',
+        '-t_srs', native_crs,
+        '-of', 'GTiff',
+        '-co', 'TILED=YES',
+        '-co', 'TFW=YES',
+        '-co', 'BIGTIFF=YES',
+        '-co', 'COMPRESS=PACKBITS',
+        tempdir,
+        table_name + "_temp1.tiff"
+    ]
+
+    subprocess.call(pargs)
+
+    pargs = [
         'gdal_translate',
         '-ot', 'Byte',
-        tempdir,
-        table_name + "_temp.tiff"
+        table_name + "_temp1.tiff",
+        table_name + "_temp2.tiff"
     ]
 
     subprocess.call(pargs)
@@ -614,10 +650,9 @@ def _load_grid_resources(grid_res, table_name, tempdir):
         '-co', 'TILED=YES',
         '-co', 'TFW=YES',
         '-co', 'BIGTIFF=YES',
-        #'-co', 'COMPRESS=PACKBITS',
         '-co', 'COMPRESS=CCITTFAX4',
         '-co', 'NBITS=1',
-        table_name + "_temp.tiff",
+        table_name + "_temp2.tiff",
         table_name + ".tiff"
     ]
 
@@ -632,7 +667,6 @@ def _load_grid_resources(grid_res, table_name, tempdir):
         '-levels', '3',
         '-ps', '1024', '1024',
         '-co', 'TILED=YES',
-        #'-co', 'COMPRESS=PACKBITS',
         '-co', 'COMPRESS=CCITTFAX4',
         '-co', 'NBITS=1',
         '-targetDir', data_output_dir,
