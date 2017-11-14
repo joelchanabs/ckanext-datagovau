@@ -383,18 +383,23 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
             for res_dict in pkg_dict.get('resources', []):
                 res_delete = False
                 ws_name = None
+                re_res = None
                 if 'data.gov.au/geoserver' in res_dict.get('url', ''):
                     re_res = re.search('.*data\.gov\.au\/geoserver\/(.*)\/.*',
                                        res_dict['url'])
-                    if re_res:
-                        ws_name = re_res.group(1)
-                        if (ws_name in ws_without_table) or not (ws_name in geoserver_workspaces):
-                            resources_to_delete.add(res_dict['id'])
-                            res_delete = True
-                        elif ws_name in filestore_workspaces:
-                            active_filestore_workspaces.add(ws_name)
-                        else:
-                            active_geoserver_workspaces.add(ws_name)
+                elif 'links.com.au/geoserver' in res_dict.get('url', ''):
+                    re_res = re.search('.*links\.com\.au\/geoserver\/(.*)\/.*',
+                                       res_dict['url'])
+
+                if re_res:
+                    ws_name = re_res.group(1)
+                    if (ws_name in ws_without_table) or not (ws_name in geoserver_workspaces):
+                        resources_to_delete.add(res_dict['id'])
+                        res_delete = True
+                    elif ws_name in filestore_workspaces:
+                        active_filestore_workspaces.add(ws_name)
+                    else:
+                        active_geoserver_workspaces.add(ws_name)
 
                 if not res_delete:
                     new_label = ''
