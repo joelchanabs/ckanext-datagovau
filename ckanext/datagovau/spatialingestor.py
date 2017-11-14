@@ -518,7 +518,7 @@ def _load_tab_resources(tab_res, table_name):
     return native_crs
 
 
-def _load_tiff_resources(tiff_res, table_name):
+def _load_tiff_resources(tiff_res, table_name, tempdir):
     url = tiff_res['url'].replace('https', 'http')
     logger.debug("using GeoTIFF file " + url)
 
@@ -531,11 +531,16 @@ def _load_tiff_resources(tiff_res, table_name):
     else:
         urllib.urlretrieve(url, "input.tiff")
 
-    tifffiles = glob.glob("*.[tT][iI][fF]") + glob.glob("*.[tT][iI][fF][fF]")
-    if len(tifffiles) == 0:
-        _failure("No TIFF files found in " + tiff_res['url'])
-
     native_crs = 'EPSG:4326'
+
+    pargs = [
+        'gdal_translate',
+        '-ot', 'Byte',
+        tempdir,
+        table_name + "_temp.tiff"
+    ]
+
+    subprocess.call(pargs)
 
     pargs = [
         'gdalwarp',
@@ -547,10 +552,10 @@ def _load_tiff_resources(tiff_res, table_name):
         '-co', 'TILED=YES',
         '-co', 'TFW=YES',
         '-co', 'BIGTIFF=YES',
-        '-co', 'COMPRESS=PACKBITS',
-        # '-co', 'COMPRESS=CCITTFAX4',
-        # '-co', 'NBITS=1',
-        tifffiles[0],
+        #'-co', 'COMPRESS=PACKBITS',
+        '-co', 'COMPRESS=CCITTFAX4',
+        '-co', 'NBITS=1',
+        table_name + "_temp.tiff",
         table_name + ".tiff"
     ]
 
@@ -565,9 +570,9 @@ def _load_tiff_resources(tiff_res, table_name):
         '-levels', '3',
         '-ps', '1024', '1024',
         '-co', 'TILED=YES',
-        '-co', 'COMPRESS=PACKBITS',
-        # '-co', 'COMPRESS=CCITTFAX4',
-        # '-co', 'NBITS=1',
+        #'-co', 'COMPRESS=PACKBITS',
+        '-co', 'COMPRESS=CCITTFAX4',
+        '-co', 'NBITS=1',
         '-targetDir', data_output_dir,
         table_name + ".tiff"
     ]
@@ -591,6 +596,15 @@ def _load_grid_resources(grid_res, table_name, tempdir):
     native_crs = 'EPSG:4326'
 
     pargs = [
+        'gdal_translate',
+        '-ot', 'Byte',
+        tempdir,
+        table_name + "_temp.tiff"
+    ]
+
+    subprocess.call(pargs)
+
+    pargs = [
         'gdalwarp',
         '--config', 'GDAL_CACHEMAX', '500',
         '-wm', '500',
@@ -600,10 +614,10 @@ def _load_grid_resources(grid_res, table_name, tempdir):
         '-co', 'TILED=YES',
         '-co', 'TFW=YES',
         '-co', 'BIGTIFF=YES',
-        '-co', 'COMPRESS=PACKBITS',
-        # '-co', 'COMPRESS=CCITTFAX4',
-        # '-co', 'NBITS=1',
-        tempdir,
+        #'-co', 'COMPRESS=PACKBITS',
+        '-co', 'COMPRESS=CCITTFAX4',
+        '-co', 'NBITS=1',
+        table_name + "_temp.tiff",
         table_name + ".tiff"
     ]
 
@@ -618,9 +632,9 @@ def _load_grid_resources(grid_res, table_name, tempdir):
         '-levels', '3',
         '-ps', '1024', '1024',
         '-co', 'TILED=YES',
-        '-co', 'COMPRESS=PACKBITS',
-        # '-co', 'COMPRESS=CCITTFAX4',
-        # '-co', 'NBITS=1',
+        #'-co', 'COMPRESS=PACKBITS',
+        '-co', 'COMPRESS=CCITTFAX4',
+        '-co', 'NBITS=1',
         '-targetDir', data_output_dir,
         table_name + ".tiff"
     ]
@@ -702,7 +716,7 @@ def _convert_resources(table_name, temp_dir, shp_resources, kml_resources, tab_r
         native_crs = _load_tab_resources(tab_resources[0], table_name)
     elif len(tiff_resources):
         using_grid = True
-        native_crs = _load_tiff_resources(tiff_resources[0], table_name)
+        native_crs = _load_tiff_resources(tiff_resources[0], table_name, temp_dir)
     elif len(grid_resources):
         using_grid = True
         native_crs = _load_grid_resources(grid_resources[0], table_name, temp_dir)
