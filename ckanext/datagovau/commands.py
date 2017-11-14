@@ -485,8 +485,6 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                     r['name']
                     for r in res.json()['featureTypes']['featureType']
                 ]:
-                    if re.search('ckan\_(.*)', ft):
-                        ft = re.search('ckan\_(.*)', ft).group(1)
                     active_geoserver_featuretypes.add(ft)
 
         postgis_tables_to_drop = []
