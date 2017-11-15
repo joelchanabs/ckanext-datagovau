@@ -688,8 +688,8 @@ def _load_grid_resources(grid_res, table_name, tempdir):
             '-of', 'GTiff',
             '-co', 'TILED=YES',
             '-co', 'TFW=YES',
-            '-co', 'BIGTIFF=YES'
-                   '-co', 'COMPRESS=CCITTFAX4',
+            '-co', 'BIGTIFF=YES',
+            '-co', 'COMPRESS=CCITTFAX4',
             '-co', 'NBITS=1',
             table_name + "_temp2.tiff",
             table_name + ".tiff"
