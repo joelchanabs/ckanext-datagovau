@@ -746,15 +746,22 @@ def _load_grid_resources(grid_res, table_name, tempdir):
     return native_crs
 
 
-def _apply_sld_resources(sld_res, workspace, layer_name):
-    # Procedure for updating layer to use default style comes from
-    # http://docs.geoserver.org/stable/en/user/rest/examples/curl.html that
-    # explains the below steps in the 'Changing a layer style' section
-
+def _apply_sld(name, workspace, layer_name, url=None, filename=None):
     geo_addr, geo_user, geo_pass, geo_public_addr = _get_geoserver_data()
 
-    name = os.path.splitext(os.path.basename(sld_res['url']))[0]
     style_url = geo_addr + 'rest/workspaces/' + workspace + '/styles/' + name
+
+    if url:
+        r = _make_request(
+            requests.get,
+            url)
+
+        if r and r.ok:
+            payload = r.content
+    elif filename:
+        payload = {'upload_file': open(filename, 'rb')}
+    else:
+        return
 
     r = _make_request(
         requests.get,
@@ -785,12 +792,20 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
         headers={'Content-type': 'application/json'},
         auth=(geo_user, geo_pass))
 
-    r = _make_request(
-        requests.put,
-        url + '/' + name,
-        data=requests.get(sld_res['url']).content,
-        headers={'Content-type': 'application/vnd.ogc.sld+xml'},
-        auth=(geo_user, geo_pass))
+    if url:
+        r = _make_request(
+            requests.put,
+            url + '/' + name,
+            data=payload,
+            headers={'Content-type': 'application/vnd.ogc.se+xml'},
+            auth=(geo_user, geo_pass))
+    else:
+        r = _make_request(
+            requests.put,
+            url + '/' + name,
+            files=payload,
+            headers={'Content-type': 'application/vnd.ogc.se+xml'},
+            auth=(geo_user, geo_pass))
 
     r = _make_request(
         requests.put,
@@ -805,6 +820,21 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
         }),
         headers={'Content-type': 'application/json'},
         auth=(geo_user, geo_pass))
+
+
+def _apply_sld_resources(sld_res, workspace, layer_name):
+    # Procedure for updating layer to use default style comes from
+    # http://docs.geoserver.org/stable/en/user/rest/examples/curl.html that
+    # explains the below steps in the 'Changing a layer style' section
+
+    name = os.path.splitext(os.path.basename(sld_res['url']))[0]
+
+    r = _make_request(
+        requests.get,
+        sld_res['url'])
+
+    if r and r.ok:
+        _apply_sld(name, workspace, layer_name, url=sld_res['url'], filename=None)
 
 
 def _convert_resources(table_name, temp_dir, shp_resources, kml_resources, tab_resources, tiff_resources,
@@ -1282,6 +1312,16 @@ def do_ingesting(dataset_id, force):
 
         if not r and not r.ok:
             _failure("Failed to create Geoserver layer {}: {}".format(_layer_base_url, r.content))
+
+        sldfiles = glob.glob("*.[sS][lL][dD]")
+        if len(sldfiles):
+            _apply_sld(
+                os.path.splitext(
+                    os.path.basename(sldfiles[0]))[0],
+                workspace,
+                layer_name,
+                url=None,
+                filename=sldfiles[0])
 
         # With layers created, we can apply any SLDs
         if len(sld_resources):
