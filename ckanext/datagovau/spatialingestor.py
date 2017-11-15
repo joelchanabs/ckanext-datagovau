@@ -733,7 +733,7 @@ def _convert_resources(table_name, temp_dir, shp_resources, kml_resources, tab_r
         native_crs = _load_tab_resources(tab_resources[0], table_name)
     elif len(tiff_resources):
         using_grid = True
-        native_crs = _load_tiff_resources(tiff_resources[0], table_name, temp_dir)
+        native_crs = _load_tiff_resources(tiff_resources[0], table_name)
     elif len(grid_resources):
         using_grid = True
         native_crs = _load_grid_resources(grid_resources[0], table_name, temp_dir)
