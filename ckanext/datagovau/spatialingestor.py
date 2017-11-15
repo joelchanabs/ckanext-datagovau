@@ -24,8 +24,8 @@ import pwd
 import shutil
 import subprocess
 import sys
-import time
 import tempfile
+import time
 import urllib
 from datetime import datetime
 
@@ -142,6 +142,22 @@ def _get_db_settings():
     )
 
 
+def _make_request(command, url, **kwargs):
+    count = 0
+    time_out = _get_request_timeout()
+    while count < time_out:
+        try:
+            r = command(url, **kwargs)
+        except:
+            count += 10
+            time.sleep(10)
+        else:
+            return r
+
+    _failure("Failed to make request {} : {}".format(command, url))
+    return None
+
+
 def _get_db_param_string(db_settings):
     result = 'PG:dbname=\'' + db_settings['dbname'] + '\' host=\'' + db_settings['host'] + '\' user=\'' + db_settings[
         'user'] + '\' password=\'' + db_settings['password'] + '\''
@@ -170,6 +186,10 @@ def _get_target_formats():
 
 def _get_source_formats():
     return set(toolkit.aslist(config.get('ckanext.datagovau.spatialingestor.source_formats', [])))
+
+
+def _get_request_timeout():
+    return config.get('ckanext.datagovau.spatialingestor.request_timeout')
 
 
 def _get_valid_qname(raw_string):
@@ -537,7 +557,8 @@ def _load_tiff_resources(tiff_res, table_name):
 
     native_crs = 'EPSG:4326'
 
-    large_file = os.stat(tifffiles[0]).st_size > long(config.get('ckanext.datagovau.spatialingestor.large_file_threshold'))
+    large_file = os.stat(tifffiles[0]).st_size > long(
+        config.get('ckanext.datagovau.spatialingestor.large_file_threshold'))
 
     if large_file:
         pargs = [
@@ -645,7 +666,8 @@ def _load_grid_resources(grid_res, table_name, tempdir):
 
     subprocess.call(pargs)
 
-    large_file = os.stat(table_name + "_temp1.tiff").st_size > long(config.get('ckanext.datagovau.spatialingestor.large_file_threshold'))
+    large_file = os.stat(table_name + "_temp1.tiff").st_size > long(
+        config.get('ckanext.datagovau.spatialingestor.large_file_threshold'))
 
     if large_file:
         pargs = [
@@ -667,7 +689,7 @@ def _load_grid_resources(grid_res, table_name, tempdir):
             '-co', 'TILED=YES',
             '-co', 'TFW=YES',
             '-co', 'BIGTIFF=YES'
-            '-co', 'COMPRESS=CCITTFAX4',
+                   '-co', 'COMPRESS=CCITTFAX4',
             '-co', 'NBITS=1',
             table_name + "_temp2.tiff",
             table_name + ".tiff"
@@ -733,21 +755,26 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
 
     name = os.path.splitext(os.path.basename(sld_res['url']))[0]
     style_url = geo_addr + 'rest/workspaces/' + workspace + '/styles/' + name
-    r = requests.get(
+
+    r = _make_request(
+        requests.get,
         style_url,
         params={'quietOnNotFound': True},
         auth=(geo_user, geo_pass))
-    if r.ok:
+
+    if r and r.ok:
         url = style_url
 
         # Delete out old style in workspace
-        r = requests.delete(url, auth=(geo_user, geo_pass))
-
-        # logger.debug('SLD Delete request to {}: {}'.format(url, r))
+        r = _make_request(
+            requests.delete,
+            url,
+            auth=(geo_user, geo_pass))
 
     url = geo_addr + 'rest/workspaces/' + workspace + '/styles'
 
-    r = requests.post(
+    r = _make_request(
+        requests.post,
         url,
         data=json.dumps({
             'style': {
@@ -758,15 +785,15 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
         headers={'Content-type': 'application/json'},
         auth=(geo_user, geo_pass))
 
-    r = requests.put(
+    r = _make_request(
+        requests.put,
         url + '/' + name,
         data=requests.get(sld_res['url']).content,
         headers={'Content-type': 'application/vnd.ogc.sld+xml'},
         auth=(geo_user, geo_pass))
 
-    # logger.debug('SLD upload {}: {}'.format(url, r))
-
-    r = requests.put(
+    r = _make_request(
+        requests.put,
         geo_addr + 'rest/layers/' + layer_name,
         data=json.dumps({
             'layer': {
@@ -870,13 +897,14 @@ def _perform_workspace_requests(datastore, workspace, table_name=None):
     else:
         _base_url += '/datastores'
 
-    r = requests.post(
+    r = _make_request(
+        requests.post,
         _base_url,
         data=dsdata,
         headers={'Content-type': 'application/json'},
         auth=(geo_user, geo_pass))
 
-    if not r.ok:
+    if not r or not r.ok:
         _failure("Failed to create Geoserver store {}: {}".format(_base_url, r.content))
 
 
@@ -1042,21 +1070,20 @@ def _prepare_everything(
     _base_url = geo_addr + 'rest/workspaces'
     _ws_url = _base_url + '/' + workspace
 
-    while True:
-        try:
-            r = requests.head(_ws_url, auth=(geo_user, geo_pass))
-            break
-        except:
-            time.sleep(10)
+    r = _make_request(
+        requests.head,
+        _ws_url,
+        auth=(geo_user, geo_pass))
 
-    if r.ok:
-        #logger.debug("Workspace found to be pre-existing: {}".format(workspace))
+    if r and r.ok:
         url = _ws_url + '?recurse=true&quietOnNotFound'
-        r = requests.delete(url, auth=(geo_user, geo_pass))
-        #if r.ok:
-        #    logger.debug('Workspace request to {} succeeded'.format(url))
+        r = _make_request(
+            requests.delete,
+            url,
+            auth=(geo_user, geo_pass))
 
-    r = requests.post(
+    r = _make_request(
+        requests.post,
         _base_url,
         data=json.dumps({
             'workspace': {
@@ -1066,7 +1093,7 @@ def _prepare_everything(
         headers={'Content-type': 'application/json'},
         auth=(geo_user, geo_pass))
 
-    if not r.ok:
+    if not r or not r.ok:
         _failure("Failed to create Geoserver workspace {}: {}".format(_base_url, r.content))
 
     # load bounding boxes from database
@@ -1157,18 +1184,17 @@ def clean_assets(dataset_id, skip_grids=False, display=False):
         _base_url = geo_addr + 'rest/workspaces'
         _ws_url = _base_url + '/' + workspace
 
-        while True:
-            try:
-                r = requests.head(_ws_url, auth=(geo_user, geo_pass))
-                break
-            except:
-                time.sleep(10)
+        r = _make_request(
+            requests.head,
+            _ws_url,
+            auth=(geo_user, geo_pass))
 
-        if r.ok:
+        if r and r.ok:
             url = _ws_url + '?recurse=true&quietOnNotFound'
-            r = requests.delete(url, auth=(geo_user, geo_pass))
-            if r.ok:
-                logger.debug('Workspace request to delete {} succeeded'.format(url))
+            r = _make_request(
+                requests.delete,
+                url,
+                auth=(geo_user, geo_pass))
 
         _delete_resources(dataset)
 
@@ -1247,13 +1273,14 @@ def do_ingesting(dataset_id, force):
         bbox_obj = _update_package_with_bbox(bbox, latlngbbox, layer_data, dataset, native_crs,
                                              bgjson) if bbox and not using_grid else None
 
-        r = requests.post(
+        r = _make_request(
+            requests.post,
             _layer_base_url,
             data=json.dumps(layer_data),
             headers={'Content-Type': 'application/json'},
             auth=(geo_user, geo_pass))
 
-        if not r.ok:
+        if not r and not r.ok:
             _failure("Failed to create Geoserver layer {}: {}".format(_layer_base_url, r.content))
 
         # With layers created, we can apply any SLDs
