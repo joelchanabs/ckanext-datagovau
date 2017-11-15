@@ -692,18 +692,31 @@ def _load_grid_resources(grid_res, table_name, tempdir):
 
     data_output_dir = _create_geoserver_data_dir(table_name)
 
-    pargs = [
-        '',
-        '-v',
-        '-r', 'near',
-        '-levels', '3',
-        '-ps', '1024', '1024',
-        '-co', 'TILED=YES',
-        '-co', 'COMPRESS=CCITTFAX4',
-        '-co', 'NBITS=1',
-        '-targetDir', data_output_dir,
-        table_name + ".tiff"
-    ]
+    if large_file:
+        pargs = [
+            '',
+            '-v',
+            '-r', 'near',
+            '-levels', '3',
+            '-ps', '1024', '1024',
+            '-co', 'TILED=YES',
+            '-co', 'COMPRESS=CCITTFAX4',
+            '-co', 'NBITS=1',
+            '-targetDir', data_output_dir,
+            table_name + ".tiff"
+        ]
+    else:
+        pargs = [
+            '',
+            '-v',
+            '-r', 'near',
+            '-levels', '3',
+            '-ps', '1024', '1024',
+            '-co', 'TILED=YES',
+            '-co', 'COMPRESS=PACKBITS',
+            '-targetDir', data_output_dir,
+            table_name + ".tiff"
+        ]
 
     gdal_retile.main(pargs)
 
