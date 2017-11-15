@@ -518,7 +518,7 @@ def _load_tab_resources(tab_res, table_name):
     return native_crs
 
 
-def _load_tiff_resources(tiff_res, table_name, tempdir):
+def _load_tiff_resources(tiff_res, table_name):
     url = tiff_res['url'].replace('https', 'http')
     logger.debug("using GeoTIFF file " + url)
 
@@ -538,27 +538,10 @@ def _load_tiff_resources(tiff_res, table_name, tempdir):
     native_crs = 'EPSG:4326'
 
     pargs = [
-        'gdalwarp',
-        '--config', 'GDAL_CACHEMAX', '500',
-        '-wm', '500',
-        '-multi',
-        '-t_srs', native_crs,
-        '-of', 'GTiff',
-        '-co', 'TILED=YES',
-        '-co', 'TFW=YES',
-        '-co', 'BIGTIFF=YES',
-        '-co', 'COMPRESS=PACKBITS',
-        tempdir,
-        table_name + "_temp1.tiff"
-    ]
-
-    subprocess.call(pargs)
-
-    pargs = [
         'gdal_translate',
         '-ot', 'Byte',
-        table_name + "_temp1.tiff",
-        table_name + "_temp2.tiff"
+        tifffiles[0],
+        table_name + "_temp.tiff"
     ]
 
     subprocess.call(pargs)
@@ -575,7 +558,7 @@ def _load_tiff_resources(tiff_res, table_name, tempdir):
         '-co', 'BIGTIFF=YES',
         '-co', 'COMPRESS=CCITTFAX4',
         '-co', 'NBITS=1',
-        table_name + "_temp2.tiff",
+        table_name + "_temp.tiff",
         table_name + ".tiff"
     ]
 
