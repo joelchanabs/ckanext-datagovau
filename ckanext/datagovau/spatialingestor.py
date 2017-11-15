@@ -759,7 +759,7 @@ def _apply_sld(name, workspace, layer_name, url=None, filename=None):
         if r and r.ok:
             payload = r.content
     elif filename:
-        payload = {'upload_file': open(filename, 'rb')}
+        payload = open(filename, 'rb')
     else:
         return
 
@@ -792,20 +792,12 @@ def _apply_sld(name, workspace, layer_name, url=None, filename=None):
         headers={'Content-type': 'application/json'},
         auth=(geo_user, geo_pass))
 
-    if url:
-        r = _make_request(
-            requests.put,
-            url + '/' + name,
-            data=payload,
-            headers={'Content-type': 'application/vnd.ogc.se+xml'},
-            auth=(geo_user, geo_pass))
-    else:
-        r = _make_request(
-            requests.put,
-            url + '/' + name,
-            files=payload,
-            headers={'Content-type': 'application/vnd.ogc.se+xml'},
-            auth=(geo_user, geo_pass))
+    r = _make_request(
+        requests.put,
+        url + '/' + name,
+        data=payload,
+        headers={'Content-type': 'application/vnd.ogc.se+xml'},
+        auth=(geo_user, geo_pass))
 
     r = _make_request(
         requests.put,
