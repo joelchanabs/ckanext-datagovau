@@ -537,47 +537,78 @@ def _load_tiff_resources(tiff_res, table_name):
 
     native_crs = 'EPSG:4326'
 
-    pargs = [
-        'gdal_translate',
-        '-ot', 'Byte',
-        tifffiles[0],
-        table_name + "_temp.tiff"
-    ]
+    large_file = os.stat(tifffiles[0]).st_size > long(config.get('ckanext.datagovau.spatialingestor.large_file_threshold'))
 
-    subprocess.call(pargs)
+    if large_file:
+        pargs = [
+            'gdal_translate',
+            '-ot', 'Byte',
+            tifffiles[0],
+            table_name + "_temp.tiff"
+        ]
 
-    pargs = [
-        'gdalwarp',
-        '--config', 'GDAL_CACHEMAX', '500',
-        '-wm', '500',
-        '-multi',
-        '-t_srs', native_crs,
-        '-of', 'GTiff',
-        '-co', 'TILED=YES',
-        '-co', 'TFW=YES',
-        '-co', 'BIGTIFF=YES',
-        '-co', 'COMPRESS=CCITTFAX4',
-        '-co', 'NBITS=1',
-        table_name + "_temp.tiff",
-        table_name + ".tiff"
-    ]
+        subprocess.call(pargs)
+
+        pargs = [
+            'gdalwarp',
+            '--config', 'GDAL_CACHEMAX', '500',
+            '-wm', '500',
+            '-multi',
+            '-t_srs', native_crs,
+            '-of', 'GTiff',
+            '-co', 'TILED=YES',
+            '-co', 'TFW=YES',
+            '-co', 'BIGTIFF=YES',
+            '-co', 'COMPRESS=CCITTFAX4',
+            '-co', 'NBITS=1',
+            table_name + "_temp.tiff",
+            table_name + ".tiff"
+        ]
+    else:
+        pargs = [
+            'gdalwarp',
+            '--config', 'GDAL_CACHEMAX', '500',
+            '-wm', '500',
+            '-multi',
+            '-t_srs', native_crs,
+            '-of', 'GTiff',
+            '-co', 'TILED=YES',
+            '-co', 'TFW=YES',
+            '-co', 'BIGTIFF=YES',
+            '-co', 'COMPRESS=PACKBITS',
+            tifffiles[0],
+            table_name + ".tiff"
+        ]
 
     subprocess.call(pargs)
 
     data_output_dir = _create_geoserver_data_dir(table_name)
 
-    pargs = [
-        '',
-        '-v',
-        '-r', 'near',
-        '-levels', '3',
-        '-ps', '1024', '1024',
-        '-co', 'TILED=YES',
-        '-co', 'COMPRESS=CCITTFAX4',
-        '-co', 'NBITS=1',
-        '-targetDir', data_output_dir,
-        table_name + ".tiff"
-    ]
+    if large_file:
+        pargs = [
+            '',
+            '-v',
+            '-r', 'near',
+            '-levels', '3',
+            '-ps', '1024', '1024',
+            '-co', 'TILED=YES',
+            '-co', 'COMPRESS=CCITTFAX4',
+            '-co', 'NBITS=1',
+            '-targetDir', data_output_dir,
+            table_name + ".tiff"
+        ]
+    else:
+        pargs = [
+            '',
+            '-v',
+            '-r', 'near',
+            '-levels', '3',
+            '-ps', '1024', '1024',
+            '-co', 'TILED=YES',
+            '-co', 'COMPRESS=PACKBITS',
+            '-targetDir', data_output_dir,
+            table_name + ".tiff"
+        ]
 
     gdal_retile.main(pargs)
 
@@ -614,30 +645,48 @@ def _load_grid_resources(grid_res, table_name, tempdir):
 
     subprocess.call(pargs)
 
-    pargs = [
-        'gdal_translate',
-        '-ot', 'Byte',
-        table_name + "_temp1.tiff",
-        table_name + "_temp2.tiff"
-    ]
+    large_file = os.stat(table_name + "_temp1.tiff").st_size > long(config.get('ckanext.datagovau.spatialingestor.large_file_threshold'))
 
-    subprocess.call(pargs)
+    if large_file:
+        pargs = [
+            'gdal_translate',
+            '-ot', 'Byte',
+            table_name + "_temp1.tiff",
+            table_name + "_temp2.tiff"
+        ]
 
-    pargs = [
-        'gdalwarp',
-        '--config', 'GDAL_CACHEMAX', '500',
-        '-wm', '500',
-        '-multi',
-        '-t_srs', native_crs,
-        '-of', 'GTiff',
-        '-co', 'TILED=YES',
-        '-co', 'TFW=YES',
-        '-co', 'BIGTIFF=YES',
-        '-co', 'COMPRESS=CCITTFAX4',
-        '-co', 'NBITS=1',
-        table_name + "_temp2.tiff",
-        table_name + ".tiff"
-    ]
+        subprocess.call(pargs)
+
+        pargs = [
+            'gdalwarp',
+            '--config', 'GDAL_CACHEMAX', '500',
+            '-wm', '500',
+            '-multi',
+            '-t_srs', native_crs,
+            '-of', 'GTiff',
+            '-co', 'TILED=YES',
+            '-co', 'TFW=YES',
+            '-co', 'BIGTIFF=YES'
+            '-co', 'COMPRESS=CCITTFAX4',
+            '-co', 'NBITS=1',
+            table_name + "_temp2.tiff",
+            table_name + ".tiff"
+        ]
+    else:
+        pargs = [
+            'gdalwarp',
+            '--config', 'GDAL_CACHEMAX', '500',
+            '-wm', '500',
+            '-multi',
+            '-t_srs', native_crs,
+            '-of', 'GTiff',
+            '-co', 'TILED=YES',
+            '-co', 'TFW=YES',
+            '-co', 'BIGTIFF=YES',
+            '-co', 'COMPRESS=PACKBITS',
+            table_name + "_temp1.tiff",
+            table_name + ".tiff"
+        ]
 
     subprocess.call(pargs)
 
@@ -988,11 +1037,11 @@ def _prepare_everything(
             time.sleep(10)
 
     if r.ok:
-        logger.debug("Workspace found to be pre-existing: {}".format(workspace))
+        #logger.debug("Workspace found to be pre-existing: {}".format(workspace))
         url = _ws_url + '?recurse=true&quietOnNotFound'
         r = requests.delete(url, auth=(geo_user, geo_pass))
-        if r.ok:
-            logger.debug('Workspace request to {} succeeded'.format(url))
+        #if r.ok:
+        #    logger.debug('Workspace request to {} succeeded'.format(url))
 
     r = requests.post(
         _base_url,
@@ -1071,7 +1120,7 @@ def clean_assets(dataset_id, skip_grids=False, display=False):
     dataset = _get_dataset_from_id(dataset_id)
 
     if display:
-        logger.debug("Cleaning out assets for dataset: {}".format(dataset_id))
+        logger.debug("\nCleaning out assets for dataset: {}".format(dataset_id))
 
     if dataset:
         # Skip cleaning datasets that may have a manually ingested grid
@@ -1121,7 +1170,7 @@ def do_ingesting(dataset_id, force):
 
         (shp_resources, kml_resources, tab_resources, tiff_resources, grid_resources, sld_resources) = grouped_resources
 
-        logger.info('Ingesting {}'.format(dataset['id']))
+        logger.info("\nIngesting {}".format(dataset['id']))
 
         # if geoserver api link does not exist or api
         # link is out of date with data, continue
