@@ -808,7 +808,6 @@ def _apply_sld(name, workspace, layer_name, url=None, filename=None):
             headers={'Content-type': 'application/vnd.ogc.sld+xml'},
             auth=(geo_user, geo_pass))
 
-
     r = _make_request(
         requests.put,
         geo_addr + 'rest/layers/' + layer_name,
