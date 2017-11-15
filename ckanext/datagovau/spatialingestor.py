@@ -799,6 +799,16 @@ def _apply_sld(name, workspace, layer_name, url=None, filename=None):
         headers={'Content-type': 'application/vnd.ogc.se+xml'},
         auth=(geo_user, geo_pass))
 
+    if r.status_code == 400:
+        # Legacy SLD file format detected
+        r = _make_request(
+            requests.put,
+            url + '/' + name,
+            data=payload,
+            headers={'Content-type': 'application/vnd.ogc.sld+xml'},
+            auth=(geo_user, geo_pass))
+
+
     r = _make_request(
         requests.put,
         geo_addr + 'rest/layers/' + layer_name,
