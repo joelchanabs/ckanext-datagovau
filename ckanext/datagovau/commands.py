@@ -377,15 +377,12 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                         headers=geoserver_headers,
                         auth=geoserver_credentials)
 
-                    for cvg in [
-                        r['name']
-                        for r in res.json()['coverages']['coverage']
-                    ]:
-                        if cvg in raster_directories:
-                            active_geoserver_coverages.add(ft)
+                    for cvg in [r['name'] for r in res.json()['coverages']['coverage'] ]:
+                        if cvg in filestore_directories:
+                            active_geoserver_coverages.add(cvg)
                         else:
                             have_directory = False
-                            cvgs_without_directory.add(ft)
+                            cvgs_without_directory.add(cvg)
                 if not have_directory:
                     ws_without_directory.add(ws)
 
