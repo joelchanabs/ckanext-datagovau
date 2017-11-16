@@ -1,5 +1,8 @@
+import glob
 import logging
+import os
 import re
+import shutil
 import sys
 
 import paste.script
@@ -7,7 +10,7 @@ import psycopg2
 from ckan import model
 from ckan.lib.cli import CkanCommand
 
-from ckanext.datagovau.spatialingestor import do_ingesting, check_if_may_skip, clean_assets
+from ckanext.datagovau.spatialingestor import do_ingesting, check_if_may_skip, clean_assets, _get_geoserver_data_dir
 
 log = logging.getLogger('ckanext_datagovau')
 
@@ -172,7 +175,8 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         datastore_info = cli.parse_db_config('ckanext.datagovau.datastore.url')
 
         active_datastore_tablenames = set()
-        active_geoserver_workspaces = set()
+        active_vector_workspaces = set()
+        active_raster_workspaces = set()
 
         datastore_postgis_same = config.get(
             'ckanext.datagovau.datastore.url') == config.get(
@@ -181,13 +185,10 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         dry_run = (len(self.args) == 1 and self.args[0].lower() == "dry-run")
         clean_all = (len(self.args) == 1
                      and self.args[0].lower() == "clean-all")
-        clean_dbs = clean_all or (len(self.args) == 1
-                                  and self.args[0].lower() == "clean-dbs-only")
-        clean_geoserver = clean_all or (
-            len(self.args) == 1
-            and self.args[0].lower() == "clean-geoserver-only")
-        clean_ckan_resources = clean_all or (
-            len(self.args) == 1 and self.args[0].lower() == "clean-ckan-only")
+        clean_dbs = clean_all or (len(self.args) == 1 and self.args[0].lower() == "clean-dbs-only")
+        clean_fs = clean_all or (len(self.args) == 1 and self.args[0].lower() == "clean-fs-only")
+        clean_geoserver = clean_all or (len(self.args) == 1 and self.args[0].lower() == "clean-geoserver-only")
+        clean_ckan_resources = clean_all or ( len(self.args) == 1 and self.args[0].lower() == "clean-ckan-only")
 
         sys.stdout.write("\n----------")
         if all([
@@ -282,6 +283,10 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                     postgis_tables.remove(sp_tab)
             sys.stdout.write(" Found {0} Tables".format(len(postgis_tables)))
 
+        # Get filestore directories
+        os.chdir(_get_geoserver_data_dir())
+        filestore_directories = glob.glob('ckan_*')
+
         # Get geoserver workspaces
         geoserver_url = 'http://' + geoserver_info['db_host']
         if geoserver_info.get('db_port', '') != '':
@@ -306,18 +311,24 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
 
         # Test workspace structures in geoserver
         active_geoserver_featuretypes = set()
+        active_geoserver_coverages = set()
         total = len(geoserver_workspaces)
         sys.stdout.write("\n----------")
         sys.stdout.write("\nTesting Geoserver Workspace Structures 0/0")
-        filestore_workspaces = set()
+        vector_workspaces = set()
+        raster_workspaces = set()
         fts_without_table = set()
+        cvgs_without_directory = set()
         ws_without_table = set()
+        ws_without_directory = set()
         for counter, ws in enumerate(geoserver_workspaces):
             try:
                 sys.stdout.write(
                     "\rTesting Geoserver Workspace Structures {0}/{1}".format(
                         counter + 1, total))
                 sys.stdout.flush()
+
+                # Datastore analysis
                 res = requests.get(
                     geoserver_url + 'rest/workspaces/' + ws + '/datastores',
                     headers=geoserver_headers,
@@ -344,23 +355,64 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                             fts_without_table.add(ft)
                 if not have_table:
                     ws_without_table.add(ws)
+
+                vector_workspaces.add(ws)
             except:
-                filestore_workspaces.add(ws)
+                pass
+
+            try:
+                # Coveragestore analysis
+                res = requests.get(
+                    geoserver_url + 'rest/workspaces/' + ws + '/coveragestores',
+                    headers=geoserver_headers,
+                    auth=geoserver_credentials)
+                coveragestores = [
+                    r['name'] for r in res.json()['coverageStores']['coverageStore']
+                ]
+                have_directory = True
+                for cs in coveragestores:
+                    res = requests.get(
+                        geoserver_url + 'rest/workspaces/' + ws +
+                        '/coveragestores/' + cs + '/coverages',
+                        headers=geoserver_headers,
+                        auth=geoserver_credentials)
+
+                    for cvg in [
+                        r['name']
+                        for r in res.json()['coverages']['coverage']
+                    ]:
+                        if cvg in raster_directories:
+                            active_geoserver_coverages.add(ft)
+                        else:
+                            have_directory = False
+                            cvgs_without_directory.add(ft)
+                if not have_directory:
+                    ws_without_directory.add(ws)
+
+                raster_workspaces.add(ws)
+            except:
+                pass
 
         ft_without_table_counter = len(fts_without_table)
+        cvg_without_directory_counter = len(cvgs_without_directory)
         ws_without_table_counter = len(ws_without_table)
-        filestore_counter = len(filestore_workspaces)
+        ws_without_directory_counter = len(ws_without_directory)
+        vector_counter = len(vector_workspaces)
+        raster_counter = len(raster_workspaces)
 
         sys.stdout.write(
-            "\nGeoserver Raster Workspaces: {0}".format(filestore_counter))
-        sys.stdout.write("\nGeoserver Vector Workspaces: {0}".format(
-            total - filestore_counter))
+            "\nGeoserver Vector Workspaces: {0}".format(vector_counter))
         sys.stdout.write(
-            "\nGeoserver Vector Workspaces Without PostGIS Tables: {0}".format(
-                ws_without_table_counter))
+            "\nGeoserver Vector Workspaces Without PostGIS Tables: {0}".format(ws_without_table_counter))
         sys.stdout.write(
-            "\nGeoserver Feature Types Without PostGIS Tables: {0}".format(
-                ft_without_table_counter))
+            "\nGeoserver Feature Types Without PostGIS Tables: {0}".format(ft_without_table_counter))
+
+        sys.stdout.write(
+            "\nGeoserver Raster Workspaces: {0}".format(raster_counter))
+        sys.stdout.write(
+            "\nGeoserver Raster Workspaces Without Filestore Directories: {0}".format(ws_without_directory_counter))
+        sys.stdout.write(
+            "\nGeoserver Coverages Without Filestore Directories: {0}".format(cvg_without_directory_counter))
 
         sys.stdout.write("\n----------")
         sys.stdout.write("\nFetching All Active Package IDs...")
@@ -374,7 +426,6 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
         sys.stdout.write(" Found {0} Package IDs".format(total))
         sys.stdout.write("\nProcessing Package ID 0/0")
         resources_to_delete = set()
-        active_filestore_workspaces = set()
         for counter, pkg_id in enumerate(pkg_ids):
             sys.stdout.write(
                 "\rProcessing Package ID {0}/{1}".format(counter + 1, total))
@@ -393,13 +444,14 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
 
                 if re_res:
                     ws_name = re_res.group(1)
-                    if (ws_name in ws_without_table) or not (ws_name in geoserver_workspaces):
+                    if all([ws_name in x for x in [ws_without_table, ws_without_directory]]) or not (ws_name in geoserver_workspaces):
                         resources_to_delete.add(res_dict['id'])
                         res_delete = True
-                    elif ws_name in filestore_workspaces:
-                        active_filestore_workspaces.add(ws_name)
                     else:
-                        active_geoserver_workspaces.add(ws_name)
+                        if ws_name in raster_workspaces:
+                            active_raster_workspaces.add(ws_name)
+                        if ws_name in vector_workspaces:
+                            active_vector_workspaces.add(ws_name)
 
                 if not res_delete:
                     new_label = ''
@@ -428,47 +480,42 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                         except:
                             if new_label_bool:
                                 sys.stdout.write(
-                                    "\nResource {0} Failed Validation; Will Drop Associated Datastore Table".
-                                        format(res_dict['id']))
+                                    "\nResource {0} Failed Validation; Will Drop Associated Datastore Table".format(res_dict['id']))
                             else:
                                 sys.stdout.write(
-                                    "\nResource {0} Failed Validation; Marking Resource For Deletion".
-                                        format(res_dict['id']))
+                                    "\nResource {0} Failed Validation; Marking Resource For Deletion".format(res_dict['id']))
                                 resources_to_delete.add(res_dict['id'])
                                 if ws_name:
-                                    if ws_name in active_filestore_workspaces:
-                                        active_filestore_workspaces.remove(
+                                    if ws_name in active_raster_workspaces:
+                                        active_raster_workspaces.remove(ws_name)
+                                    if ws_name in active_vector_workspaces:
+                                        active_vector_workspaces.remove(
                                             ws_name)
-                                    elif ws_name in active_geoserver_workspaces:
-                                        active_geoserver_workspaces.remove(
-                                            ws_name)
-                        sys.stdout.write("\nProcessing Package ID {0}/{1}".
-                                         format(counter + 1, total))
+                        sys.stdout.write("\nProcessing Package ID {0}/{1}".format(counter + 1, total))
 
         ds_counter = len(active_datastore_tablenames)
         delete_counter = len(resources_to_delete)
-        active_filestore_counter = len(active_filestore_workspaces)
-        geo_counter = len(active_geoserver_workspaces)
+        active_raster_counter = len(active_raster_workspaces)
+        active_vector_counter = len(active_vector_workspaces)
 
         sys.stdout.write(
             "\nActive Datastore Resources: {0}".format(ds_counter))
-        sys.stdout.write("\nActive Geoserver Resources: {0}.".format(
-            geo_counter + active_filestore_counter))
-        sys.stdout.write("\nActive Geoserver Rasterized Resources: {0}".format(
-            active_filestore_counter))
         sys.stdout.write(
-            "\nActive Geoserver Vector Resources: {0}".format(geo_counter))
+            "\nActive Geoserver Resources: {0}.".format(len(active_raster_workspaces & active_vector_workspaces)))
         sys.stdout.write(
-            "\nActive Geoserver Resources With Broken Workspaces: {0}".format(
-                delete_counter))
+            "\nActive Geoserver Raster Resources: {0}".format(active_raster_counter))
+        sys.stdout.write(
+            "\nActive Geoserver Vector Resources: {0}".format(active_vector_counter))
+        sys.stdout.write(
+            "\nActive Geoserver Resources With Broken Workspaces: {0}".format(delete_counter))
 
         # Extract feature types for active geoserver workspaces
         active_geoserver_featuretypes = set()
-        total = len(active_geoserver_workspaces)
+        total = len(active_vector_workspaces)
         sys.stdout.write("\n----------")
         sys.stdout.write(
             "\nExtracting PostGIS Table Name From Geoserver Workspace 0/0")
-        for counter, ws in enumerate(active_geoserver_workspaces):
+        for counter, ws in enumerate(active_vector_workspaces):
             sys.stdout.write(
                 "\rExtracting PostGIS Table Name From Geoserver Workspace {0}/{1}".
                     format(counter + 1, total))
@@ -533,9 +580,47 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
             sys.stdout.write(" Will Drop {0} Out Of {1} Tables".format(
                 len(datastore_tables_to_drop), len(datastore_tables)))
 
+        # Extract coverages for active geoserver workspaces
+        active_geoserver_coverages = set()
+        total = len(active_raster_workspaces)
+        sys.stdout.write("\n----------")
+        sys.stdout.write(
+            "\nExtracting Filestore Directory Name From Geoserver Workspace 0/0")
+        for counter, ws in enumerate(active_raster_workspaces):
+            sys.stdout.write(
+                "\rExtracting Filestore Directory Name From Geoserver Workspace {0}/{1}".format(counter + 1, total))
+            sys.stdout.flush()
+            res = requests.get(
+                geoserver_url + 'rest/workspaces/' + ws + '/coveragestores',
+                headers=geoserver_headers,
+                auth=geoserver_credentials)
+            coveragestores = [
+                r['name'] for r in res.json()['coverageStores']['coverageStore']
+            ]
+            for cs in coveragestores:
+                res = requests.get(
+                    geoserver_url + 'rest/workspaces/' + ws + '/coveragestores/' + cs + '/coverages',
+                    headers=geoserver_headers,
+                    auth=geoserver_credentials)
+                for ft in [r['name'] for r in res.json()['coverages']['coverage']]:
+                    active_geoserver_coverages.add(ft)
+
+        sys.stdout.write(
+            "\nFinding Active Geoserver Coverages Without A Filestore Directory..."
+        )
+        geoserver_coverages_without_directory = active_geoserver_coverages - set(filestore_directories)
+        sys.stdout.write(" Found {0} Coverages".format(len(geoserver_coverages_without_directory)))
+
+        sys.stdout.write("\nDetermining Which Filestore Directories To Delete...")
+        valid_directory_names = active_geoserver_coverages
+        filestore_directories_to_delete = list(set(filestore_directories) - valid_directory_names)
+        sys.stdout.write(
+            " Will Delete {0} Out Of {1} Directories".format(
+                len(filestore_directories_to_delete), len(filestore_directories)))
+
         sys.stdout.write(
             "\nDetermining Which Geoserver Workspaces To Delete...")
-        valid_workspaces = active_geoserver_workspaces | active_filestore_workspaces
+        valid_workspaces = active_vector_workspaces | active_raster_workspaces
         workspaces_to_delete = list(
             set(geoserver_workspaces) - valid_workspaces)
         sys.stdout.write(" Will Delete {0} Out Of {1} Workspaces".format(
@@ -567,6 +652,15 @@ class ReconcileGeoserverAndDatastore(CkanCommand):
                         """DROP TABLE "{0}" CASCADE""".format(table_name))
             connection.commit()
             connection.close()
+
+        sys.stdout.write("\n----------")
+        sys.stdout.write(
+            "\nDirectories To Be Deleted From Filestore ({0} Out Of {1}):".format(
+                len(filestore_directories_to_delete), len(filestore_directories)))
+        for directory_name in filestore_directories_to_delete:
+            sys.stdout.write("\nDeleting Directory {0}".format(directory_name))
+            if clean_fs:
+                shutil.rmtree(_get_geoserver_data_dir(directory_name))
 
         sys.stdout.write("\n----------")
         sys.stdout.write(
