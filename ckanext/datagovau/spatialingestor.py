@@ -850,7 +850,7 @@ def _apply_sld_resources(sld_res, workspace, layer_name):
         sld_res['url'])
 
     if r and r.ok:
-        _apply_sld(name, workspace, layer_name, url=sld_res['url'], filename=None)
+        _apply_sld(name, workspace, layer_name, url=sld_res['url'], filepath=None)
 
 
 def _convert_resources(table_name, temp_dir, shp_resources, kml_resources, tab_resources, tiff_resources,
@@ -1337,7 +1337,7 @@ def do_ingesting(dataset_id, force):
                 workspace,
                 layer_name,
                 url=None,
-                filename=sldfiles[0])
+                filepath=sldfiles[0])
 
         # With layers created, we can apply any SLDs
         if len(sld_resources):
