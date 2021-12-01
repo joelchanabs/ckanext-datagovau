@@ -1,32 +1,10 @@
-# encoding: utf-8
-import click
 import logging
-
-# Imports from legacy datagovau commands.py
-import glob
-import os
-import re
-import shutil
 import sys
 
-import psycopg2
+import click
 from ckan import model
 
-from ckantoolkit import config
-
-
-log = logging.getLogger('ckanext_datagovau')
-
-# Keep for now--will check before switching to this.
-#log = logging.getLogger(__name__)
-
-# Commands this module implements.  For now,
-# only spatial_ingestor; purgelegacyspatial is not
-# referenced anywhere in the datagovau code base, so
-# ignore for now.  Template for including it if required
-# is commented out at the end of this module.
-def get_commands():
-    return [spatial_ingestor]
+log = logging.getLogger(__name__)
 
 # datagovau spatial-ingestor command group.
 @click.group(u"spatial-ingestor", short_help=u"Ingest spatial data")
@@ -45,7 +23,7 @@ def perform_ingest(scope):
 
         where scope is one of: 'all', 'updated', 'updated-orgs', or <dataset-id>.
     """
-    from ckanext.datagovau.spatialingestor import do_ingesting
+    from ._spatialingestor import do_ingesting
     if scope in ('all', 'updated', 'updated-orgs'):
         force = True if scope == 'all' else False
         if scope == 'updated-orgs':
@@ -83,7 +61,7 @@ def perform_purge(scope):
 
         where scope is one of: 'all' or 'erroneous'.
     """
-    from ckanext.datagovau.spatialingestor import check_if_may_skip, clean_assets
+    from ._spatialingestor import check_if_may_skip, clean_assets
     if scope in ['all', 'erroneous']:
         pkg_ids = [
             r[0]
