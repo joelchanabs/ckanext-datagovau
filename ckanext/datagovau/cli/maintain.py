@@ -65,6 +65,8 @@ def zip_extract(
                             resource["id"], dataset["id"]
                         )
                     )
-                    if not skip_errors:
-                        raise
+                    if skip_errors:
+                        continue
+                    raise
+
                 z.submit_to_datapusher(updated_resource_id, ckan)
