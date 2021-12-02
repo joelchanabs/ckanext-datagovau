@@ -8,7 +8,7 @@ import contextlib
 
 import click
 import ckanapi
-
+import ckan.plugins.toolkit as tk
 
 path = None
 
@@ -53,5 +53,16 @@ def zip_extract(
                 result = z.extract_resource(resource, ckan, path)
                 if not result:
                     continue
-                updated_resource_id = z.update_resource(*result, ckan, resource, dataset)
+                try:
+                    updated_resource_id = z.update_resource(
+                        *result, ckan, resource, dataset
+                    )
+                except ckanapi.ValidationError as e:
+                    tk.error_shout(
+                        "Cannot update resource {} from dataset {}".format(
+                            resource["id"], dataset["id"]
+                        )
+                    )
+                    tk.error_shout(e.error_dict)
+                    continue
                 z.submit_to_datapusher(updated_resource_id, ckan)
