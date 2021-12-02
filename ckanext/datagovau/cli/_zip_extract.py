@@ -75,13 +75,18 @@ def extract_resource(
 ) -> Optional[tuple[str, str]]:
     os.chdir(path)
 
-    resp = requests.get(resource["url"], stream=True)
     log.info(
         "Downloading resource %s from URL %s into %s",
         resource["id"],
         resource["url"],
         path,
     )
+
+    try:
+        resp = requests.get(resource["url"], stream=True)
+    except requests.RequestException:
+        log.exception("Cannot connect to URL")
+        return
 
     if not resp.ok:
         log.error(

@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+import logging
 
 from typing import Iterable, Optional
 import contextlib
 
 import click
 import ckanapi
-import ckan.plugins.toolkit as tk
 
-path = None
-
+log = logging.getLogger(__name__)
 
 @contextlib.contextmanager
 def temp_dir(suffix: str, dir: str):
@@ -59,8 +58,8 @@ def zip_extract(
                     updated_resource_id = z.update_resource(
                         *result, ckan, resource, dataset
                     )
-                except ckanapi.ValidationError as e:
-                    tk.error_shout(
+                except ckanapi.ValidationError:
+                    log.error(
                         "Cannot update resource {} from dataset {}".format(
                             resource["id"], dataset["id"]
                         )
