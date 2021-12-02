@@ -1,7 +1,6 @@
 from __future__ import annotations
 import os
 from datetime import datetime
-import sys
 import time
 import logging
 import zipfile
@@ -71,7 +70,7 @@ def select_extractable_resources(
 
 
 def extract_resource(
-    resource: dict[str, Any], ckan: ckanapi.LocalCKAN, path: str
+    resource: dict[str, Any], path: str
 ) -> Optional[tuple[str, str]]:
     os.chdir(path)
 
@@ -105,7 +104,11 @@ def extract_resource(
 
 
 def update_resource(
-        file: str, path: str, ckan: ckanapi.LocalCKAN, resource: dict[str, Any], dataset: dict[str, Any]
+    file: str,
+    path: str,
+    ckan: ckanapi.LocalCKAN,
+    resource: dict[str, Any],
+    dataset: dict[str, Any],
 ) -> str:
 
     for res in dataset["resources"]:
@@ -132,6 +135,7 @@ def update_resource(
         )
 
     return res["id"]
+
 
 def submit_to_datapusher(res_id: str, ckan: ckanapi.LocalCKAN):
     # Give datapusher 10 seconds to start
@@ -169,8 +173,13 @@ def submit_to_datapusher(res_id: str, ckan: ckanapi.LocalCKAN):
                         ).total_seconds()
                         > 86400
                     ):
-                        log.info("Datapusher is in a stale pending state, re-submitting job...")
-                        log.info("Waiting for datapusher to ingest resource... ")
+                        log.info(
+                            "Datapusher is in a stale pending state,"
+                            " re-submitting job..."
+                        )
+                        log.info(
+                            "Waiting for datapusher to ingest resource... "
+                        )
                         ckan.call_action(
                             "datapusher_submit", {"resource_id": res_id}
                         )
@@ -185,7 +194,8 @@ def submit_to_datapusher(res_id: str, ckan: ckanapi.LocalCKAN):
 
     if datapusher_present:
         log.info(
-            "Datapusher has finished pushing resource, continuing with Zip extraction..."
+            "Datapusher has finished pushing resource, continuing with Zip"
+            " extraction..."
         )
 
 
@@ -234,34 +244,3 @@ def zipdir(path: str, ziph: zipfile.ZipFile):
     for root, dirs, files in os.walk(path):
         for file in files:
             ziph.write(os.path.join(root, file))
-
-
-_test = {
-    "cache_last_updated": None,
-    "package_id": "da2030e2-51ea-4cde-a7fe-9caa936f0c6c",
-    "datastore_active": False,
-    "id": "b8aa7ea3-4bd0-4101-bf85-a13c452466ce",
-    "size": None,
-    "zip_extract": "True",
-    "wms_layer": "",
-    "metadata_modified": None,
-    "state": "active",
-    "hash": "",
-    "description": (
-        "Polyline data of the roads within the Colac Otway Shire showing"
-        " authority, with contact details. Although all due care has been"
-        " taken to ensure that this data is correct, no warranty is expressed"
-        " or implied by the Colac Otway Shire in it's use. "
-    ),
-    "format": "SHP",
-    "mimetype_inner": None,
-    "url_type": "upload",
-    "mimetype": None,
-    "cache_url": None,
-    "name": "Colac Otway Shire Roads by Authority",
-    "created": "2016-07-12T12:18:29.824631",
-    "url": "https://data.gov.au/data/dataset/4b472a18-d0fa-409c-994a-ab17162bcb90/resource/ead545d0-7201-4569-96f3-cb569a101184/download/coverage-map-optus-3g-2018.zip",
-    "last_modified": "2016-07-12T02:18:24",
-    "position": 1,
-    "resource_type": None,
-}

@@ -12,6 +12,7 @@ import ckanapi
 
 log = logging.getLogger(__name__)
 
+
 @contextlib.contextmanager
 def temp_dir(suffix: str, dir: str):
     path = tempfile.mkdtemp(suffix=suffix, dir=dir)
@@ -51,7 +52,7 @@ def zip_extract(
     with ctx.meta["flask_app"].test_request_context():
         for resource, dataset in z.select_extractable_resources(ckan, ids):
             with temp_dir(resource["id"], tmp_dir) as path:
-                result = z.extract_resource(resource, ckan, path)
+                result = z.extract_resource(resource, path)
                 if not result:
                     continue
                 try:
