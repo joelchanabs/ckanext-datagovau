@@ -33,6 +33,7 @@ def maintain():
 @click.option("-u", "--username")
 @click.option("--tmp-dir", "/tmp")
 @click.option("--days-to-buffer", "days", default=3, type=int)
+@click.option("--skip-errors", is_flag=True)
 @click.pass_context
 def zip_extract(
     ctx: click.Context,
@@ -40,6 +41,7 @@ def zip_extract(
     tmp_dir: str,
     username: Optional[str],
     days: int,
+    skip_errors: bool,
 ):
     """ZIP extractor for data.gov.au"""
     ckan = ckanapi.LocalCKAN(username)
@@ -63,6 +65,6 @@ def zip_extract(
                             resource["id"], dataset["id"]
                         )
                     )
-                    tk.error_shout(e.error_dict)
-                    continue
+                    if not skip_errors:
+                        raise
                 z.submit_to_datapusher(updated_resource_id, ckan)
