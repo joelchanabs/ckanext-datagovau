@@ -1,20 +1,47 @@
-import logging
-import sys
+from __future__ import annotations
+
+from typing import Iterable
 
 import click
 from ckan import model
-
-log = logging.getLogger(__name__)
+import ckan.plugins.toolkit as tk
 
 # datagovau spatial-ingestor command group.
-@click.group(u"spatial-ingestor", short_help=u"Ingest spatial data")
+@click.group("spatial-ingestor", short_help="Ingest spatial data")
 def spatial_ingestor():
     pass
 
+
+def ingest_scope(scope) -> Iterable[tuple[str, bool]]:
+    if not isinstance(scope, str):
+        # it has been normalised already
+        yield from scope
+    elif scope not in ("all", "updated", "updated-orgs"):
+        yield scope, True
+    else:
+        force = scope == "all"
+        query = model.Session.query(model.Package.id).filter_by(state="active")
+        if scope == "updated-orgs":
+            query = query.filter(
+                # TODO: why they are hardcoded? Either fetch them from config
+                # file or pass as CLI argument
+                model.Package.owner_org.in_(
+                    [
+                        "3965c5cd-d88f-4735-92db-af28d3ad9155",  # nntt
+                        "a56f8067-b250-4c32-9609-f2191dc88a3a",  # geelong
+                    ]
+                )
+            )
+
+        with click.progressbar(query) as bar:
+            for pkg in bar:
+                yield pkg.id, force
+
+
 # spatial-ingestor ingest subcommand.
-@spatial_ingestor.command('ingest')
-@click.argument('scope')
-def perform_ingest(scope):
+@spatial_ingestor.command("ingest")
+@click.argument("scope", type=ingest_scope)
+def perform_ingest(scope: Iterable[tuple[str, bool]]):
     """
     Performs ingest of spatial data for scope of data.
 
@@ -24,105 +51,99 @@ def perform_ingest(scope):
         where scope is one of: 'all', 'updated', 'updated-orgs', or <dataset-id>.
     """
     from ._spatialingestor import do_ingesting
-    if scope in ('all', 'updated', 'updated-orgs'):
-        force = True if scope == 'all' else False
-        if scope == 'updated-orgs':
-            pkg_ids = [ r[0] for r in model.Session.query(model.Package.id).filter_by(state='active').filter(
-                model.Package.owner_org.in_(['3965c5cd-d88f-4735-92db-af28d3ad9155', #nntt
-                                            'a56f8067-b250-4c32-9609-f2191dc88a3a' #geelong
-                                            ])).all()]
-        else:
-            pkg_ids = [ r[0] for r in model.Session.query(model.Package.id).filter_by(state='active').all()]
 
-            total = len(pkg_ids)
+    for pkg_id, force in scope:
+        do_ingesting(pkg_id, force)
 
-            sys.stdout.write(" Found {0} Package IDs".format(total))
-            sys.stdout.write("\nIngesting Package ID 0/0")
 
-        for counter, pkg_id in enumerate(pkg_ids):
-            sys.stdout.write(
-                "\rIngesting Package ID {0}/{1} ({2})\r".format(counter + 1, total, pkg_id))
-            sys.stdout.flush()
-            # log.info("Ingesting %s" % dataset.id)
-            do_ingesting(pkg_id, force)
+def purge_scope(scope) -> Iterable[tuple[str, bool]]:
+    from ._spatialingestor import check_if_may_skip, IngestionSkip
+
+    if not isinstance(scope, str):
+        # it has been normalised already
+        yield from scope
+    elif scope not in ["all", "erroneous"]:
+        yield scope, False
     else:
-        log.info("Ingesting %s" % scope)
-        do_ingesting(scope, True)
+        query = model.Session.query(model.Package.id)
+        with click.progressbar(query) as bar:
+            for pkg in bar:
+                if scope == "erroneous":
+                    try:
+                        check_if_may_skip(pkg.id, True)
+                    except IngestionSkip:
+                        yield pkg.id, False
+                else:
+                    yield pkg.id, True
+
 
 # datagovau spatial-ingestor purge subcommand.
-@spatial_ingestor.command('purge')
-@click.argument('scope')
-def perform_purge(scope):
+@spatial_ingestor.command("purge")
+@click.argument("scope", type=purge_scope)
+def perform_purge(scope: Iterable[tuple[str, bool]]):
     """
     Performs purge of nominated scope.
 
     Usage:
         ckan spatial-ingestor purge <scope>
 
-        where scope is one of: 'all' or 'erroneous'.
+        where scope is one of: 'all', 'erroneous', or <dataset-id>.
     """
-    from ._spatialingestor import check_if_may_skip, clean_assets
-    if scope in ['all', 'erroneous']:
-        pkg_ids = [
-            r[0]
-            for r in model.Session.query(model.Package.id).all()
-            ]
+    from ._spatialingestor import clean_assets
 
-        total = len(pkg_ids)
+    for pkg_id, skip_grids in scope:
+        clean_assets(pkg_id, skip_grids=skip_grids)
 
-        sys.stdout.write(" Found {0} Package IDs".format(total))
-        sys.stdout.write("\nPurging Package ID 0/0")
-
-        for counter, pkg_id in enumerate(pkg_ids):
-            sys.stdout.write(
-                "\rPurging Package ID {0}/{1}".format(counter + 1, total))
-            sys.stdout.flush()
-            if scope == 'erroneous':
-                try:
-                    check_if_may_skip(pkg_id, True)
-                except:
-                    clean_assets(pkg_id)
-            else:
-                clean_assets(pkg_id, skip_grids=True)
-    else:
-        # log.info("Ingesting %s" % scope)
-        clean_assets(scope, display=True)
 
 # datagovau spatial-ingestor dropuser subcommand.
-@spatial_ingestor.command('dropuser')
-@click.argument('username')
-def perform_drop_user(username):
+@spatial_ingestor.command("dropuser")
+@click.argument("username")
+def perform_drop_user(username: str):
     """
     Deletes nominated user.
 
     Usage:
         ckan spatial-ingestor dropuser <username>
     """
-    user = model.User.get(username)
+    user: model.User = model.User.get(username)
     if user is None:
-        print('User <%s> not found' % username)
-        return
+        tk.error_shout(f"User <{username}> not found")
+        raise click.Abort()
+
     groups = user.get_groups()
     if groups:
-        print('User is a member of groups/organizations: %s' % ', '.join(
-            [g.title or g.name for g in groups]
-            ))
-        return
-    pkgs = model.Session.query(model.Package).filter_by(creator_user_id=user.id)
+        tk.error_shout(
+            "User is a member of groups/organizations: %s"
+            % ", ".join(g.display_name for g in groups)
+        )
+        raise click.Abort()
+
+    pkgs = model.Session.query(model.Package).filter_by(
+        creator_user_id=user.id
+    )
     if pkgs.count():
-        print('There are some(%d) datasets created by this user: %s'
-              % (pkgs.count(), [pkg.name for pkg in pkgs]))
-        return
-    activities = model.Session.query(model.Activity).filter_by(
-        user_id=user.id
-        ).filter(model.Activity.activity_type.contains('package'))
+        tk.error_shout(
+            "There are some(%d) datasets created by this user: %s"
+            % (pkgs.count(), [pkg.name for pkg in pkgs])
+        )
+        raise click.Abort()
+
+    activities = (
+        model.Session.query(model.Activity)
+        .filter_by(user_id=user.id)
+        .filter(model.Activity.activity_type.contains("package"))
+    )
     if activities.count():
-        print('There are some(%d) activity records that mentions user'
-              % activities.count())
-        return
+        tk.error_shout(
+            "There are some(%d) activity records that mentions user"
+            % activities.count()
+        )
+        raise click.Abort()
+
     model.Session.delete(user)
     model.Session.commit()
-    print('Done')
+    click.secho("Done", fg="green")
+
 
 # Command currently not referenced in any of the DGA
 # batch scripts.  Skeleton included in case it is required
@@ -130,13 +151,13 @@ def perform_drop_user(username):
 # of a junkbucked/kludgy solution to a problem that will
 # likely need not to be addressed---source code for it is
 # in the old commands.py source.
-#@click.group('purgelegacyspatial', short_help=u"Cleans out what old spatial ingestor did.")
-#def purgelegacyspatial():
+# @click.group('purgelegacyspatial', short_help=u"Cleans out what old spatial ingestor did.")
+# def purgelegacyspatial():
 #    pass
 #
-#@purgelegacyspatial.command()
-#@click.argument()
-#def perform_stuff():
+# @purgelegacyspatial.command()
+# @click.argument()
+# def perform_stuff():
 #    """
 #    Placeholder for now.
 #    """
