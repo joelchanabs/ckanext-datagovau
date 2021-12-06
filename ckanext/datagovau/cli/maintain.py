@@ -1,26 +1,15 @@
 from __future__ import annotations
 
-import shutil
-import tempfile
 import logging
 
 from typing import Iterable, Optional
-import contextlib
 
 import click
 import ckanapi
 
+from ..utils import temp_dir
+
 log = logging.getLogger(__name__)
-
-
-@contextlib.contextmanager
-def temp_dir(suffix: str, dir: str):
-    path = tempfile.mkdtemp(suffix=suffix, dir=dir)
-    try:
-        yield path
-    finally:
-        shutil.rmtree(path)
-
 
 @click.group()
 def maintain():
