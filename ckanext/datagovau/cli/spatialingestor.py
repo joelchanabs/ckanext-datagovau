@@ -6,6 +6,7 @@ import ckan.plugins.toolkit as tk
 
 
 @click.group("spatial-ingestor", short_help="Ingest spatial data")
+@click.help_option("-h", "--help")
 def spatial_ingestor():
     pass
 
@@ -22,15 +23,10 @@ def spatial_ingestor():
         "a56f8067-b250-4c32-9609-f2191dc88a3a",
     ],
 )
+@click.help_option("-h", "--help")
 def perform_ingest(scope: str, force: bool, organization: tuple[str]):
     """
-    Performs ingest of spatial data for scope of data.
-
-    Usage::
-        ckan spatial-ingestor <scope> [--force]
-
-        where scope is one of: 'all', 'updated', 'updated-orgs', or <dataset-id>
-        and force option unconditionally enforces ingestion.
+    Performs ingest of spatial data for scope of data, where scope is one of: 'all', 'updated', 'updated-orgs', or <dataset-id>.
     """
     from ._spatialingestor import do_ingesting
 
@@ -48,16 +44,19 @@ def perform_ingest(scope: str, force: bool, organization: tuple[str]):
 
 
 @spatial_ingestor.command("purge")
-@click.option("-s", "--skip-grids", is_flag=True, default=True)
+@click.option(
+    "-s",
+    "--skip-grids",
+    is_flag=True,
+    default=True,
+    help="Do not purge grid datasets",
+)
 @click.argument("scope")
+@click.help_option("-h", "--help")
 def perform_purge(scope: str, skip_grids: bool):
     """
-    Performs purge of nominated scope.
+    Performs purge of nominated scope, where scope is one of: 'all', 'erroneous', or <dataset-id>.
 
-    Usage:
-        ckan spatial-ingestor purge <scope>
-
-        where scope is one of: 'all', 'erroneous', or <dataset-id>.
     """
     from ._spatialingestor import clean_assets, may_skip
 
@@ -78,13 +77,9 @@ def perform_purge(scope: str, skip_grids: bool):
 # datagovau spatial-ingestor dropuser subcommand.
 @spatial_ingestor.command("dropuser")
 @click.argument("username")
+@click.help_option("-h", "--help")
 def perform_drop_user(username: str):
-    """
-    Deletes nominated user.
-
-    Usage:
-        ckan spatial-ingestor dropuser <username>
-    """
+    """Deletes nominated user."""
     user: model.User = model.User.get(username)
     if user is None:
         tk.error_shout(f"User <{username}> not found")

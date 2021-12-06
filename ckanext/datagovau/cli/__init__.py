@@ -10,6 +10,7 @@ def get_commands():
     ]
 
 @click.group(short_help="DGA CLI")
+@click.help_option("-h", "--help")
 def dga():
     pass
 
