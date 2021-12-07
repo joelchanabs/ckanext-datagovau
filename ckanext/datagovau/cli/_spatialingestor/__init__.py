@@ -302,7 +302,7 @@ def _load_esri_shapefiles(
         "-overwrite",
     ]
 
-    exit_code = ogr2ogr.main(pargs)
+    exit_code = _call_ogr2ogr(pargs)
     if exit_code:
         _failure("Ogr2ogr: Failed to convert file to PostGIS")
 
@@ -386,7 +386,7 @@ def _load_kml_resources(resource: dict[str, Any], table_name: str) -> str:
         "-overwrite",
     ]
 
-    exit_code = ogr2ogr.main(pargs)
+    exit_code = _call_ogr2ogr(pargs)
     if exit_code:
         _failure("Ogr2ogr: Failed to convert file to PostGIS")
 
@@ -431,12 +431,13 @@ def _load_tab_resources(resource: dict[str, Any], table_name: str) -> str:
         "-overwrite",
     ]
 
-    exit_code = ogr2ogr.main(pargs)
+    exit_code = _call_ogr2ogr(pargs)
     log.debug(exit_code)
     if exit_code:
         _failure("Ogr2ogr: Failed to convert file to PostGIS")
     os.environ["PGCLIENTENCODING"] = "windows-1252"
-    exit_code = ogr2ogr.main(pargs)
+
+    exit_code = _call_ogr2ogr(pargs)
     log.debug(exit_code)
     if exit_code:
         _failure("Ogr2ogr: Failed to convert file to PostGIS")
@@ -1410,6 +1411,16 @@ def _get_source_formats() -> list[str]:
 
 def _get_datastore_url() -> str:
     return tk.config["ckanext.datagovau.spatialingestor.datastore.url"]
+
+def _get_ogr2ogr_binary() -> Optional[str]:
+    return tk.config.get("ckanext.datagovau.spatialingestor.ogr2ogr.executable")
+
+
+def _call_ogr2ogr(pargs):
+    executable = _get_ogr2ogr_binary()
+    if executable:
+        return subprocess.call([executable] + pargs[1:])
+    return ogr2ogr.main(pargs)
 
 
 def call_action(action: str, data: dict[str, Any], ignore_auth=False) -> Any:
