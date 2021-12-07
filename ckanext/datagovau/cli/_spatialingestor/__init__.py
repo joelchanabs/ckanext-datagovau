@@ -19,7 +19,7 @@ import pwd
 import shutil
 import subprocess
 import contextlib
-from typing import Any, NamedTuple, Optional, Dict, List, NoReturn
+from typing import Any, Container, Iterable, NamedTuple, Optional, Dict, List, NoReturn, TypeVar
 import urllib
 import re
 
@@ -41,6 +41,12 @@ from .exc import BadConfig, IngestionFail
 log = logging.getLogger(__name__)
 
 ResourceGroup = List[Dict[str, Any]]
+
+T = TypeVar("T")
+
+def _contains(value: Container[T], parts: Iterable[T]) -> bool:
+    return any(part in value for part in parts)
+
 
 
 class GroupedResources(NamedTuple):
@@ -69,18 +75,18 @@ class GroupedResources(NamedTuple):
             if "/geoserver" in resource["url"]:
                 continue
 
-            if fmt == "sld":
+            if _contains(fmt, {"sld"}):
                 sld.append(resource)
             elif is_source:
-                if fmt in {"kml", "kmz"}:
+                if _contains(fmt, {"kml", "kmz"}):
                     kml.append(resource)
-                elif fmt in {"shp", "shapefile", "shz"}:
+                elif _contains(fmt, {"shp", "shapefile", "shz"}):
                     shp.append(resource)
-                elif fmt in {"tab", "mapinfo"}:
+                elif _contains(fmt, {"tab", "mapinfo"}):
                     tab.append(resource)
-                elif fmt in {"grid"}:
+                elif _contains(fmt, {"grid"}):
                     grid.append(resource)
-                elif fmt in {"geotif", "geotiff"}:
+                elif _contains(fmt, {"geotif", "geotiff"}):
                     tiff.append(resource)
 
         return cls(shp, kml, tab, tiff, grid, sld)
