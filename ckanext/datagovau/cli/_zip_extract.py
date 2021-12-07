@@ -69,7 +69,7 @@ def select_extractable_resources(
         yield from (
             (r, dataset)
             for r in dataset["resources"]
-            if r["format"].lower() == "zip" and r.get("zip_extract", "")
+            if "zip" in r["format"].lower() and r.get("zip_extract", "")
         )
 
 
