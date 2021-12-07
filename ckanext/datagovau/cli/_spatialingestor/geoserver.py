@@ -6,6 +6,7 @@ from typing import Any, NamedTuple
 
 import requests
 
+import ckan.plugins.toolkit as tk
 from .exc import BadConfig
 
 

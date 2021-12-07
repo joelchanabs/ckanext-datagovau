@@ -1,26 +1,30 @@
 from __future__ import annotations
 import os
 from datetime import datetime
-import time
 import logging
 import zipfile
 
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
+from werkzeug.datastructures import FileStorage
 
 import ckanapi
 import requests
 import ckan.plugins.toolkit as tk
 
+CONFIG_INTERESTING_EXTENSIONS = (
+    "ckanext.datagovau.zip-extractor.interesting_extensions"
+)
+DEFAULT_INTERESTING_EXTENSIONS = "csv"
+
 log = logging.getLogger(__name__)
-INTERESTING_EXTENSIONS = {
-    "csv",
-    "xls",
-    "xlsx",
-    "json",
-    "geojson",
-    "shp",
-    "kml",
-}
+
+
+def _interesting_extensions() -> list[str]:
+    return tk.aslist(
+        tk.config.get(
+            CONFIG_INTERESTING_EXTENSIONS, DEFAULT_INTERESTING_EXTENSIONS
+        ).lower()
+    )
 
 
 def get_dataset_ids(ckan: ckanapi.LocalCKAN, days: int) -> Iterable[str]:
@@ -71,7 +75,7 @@ def select_extractable_resources(
 
 def extract_resource(
     resource: dict[str, Any], path: str
-) -> Optional[tuple[str, str]]:
+) -> Iterable[tuple[str, str]]:
     os.chdir(path)
 
     log.info(
@@ -100,113 +104,55 @@ def extract_resource(
 
     archive = zipfile.ZipFile("input.zip")
     archive.extractall()
-    return recurse_directory(path)
+    yield from recurse_directory(path)
 
 
 def update_resource(
-    file: str,
-    path: str,
+    filename: str,
+    filepath: str,
     ckan: ckanapi.LocalCKAN,
     resource: dict[str, Any],
     dataset: dict[str, Any],
 ) -> str:
+    with open(filepath, "rb") as stream:
+        upload = FileStorage(stream, filename, filename)
+        for res in dataset["resources"]:
+            if res["name"] == filename:
+                res["last_modified"] = datetime.utcnow().isoformat()
+                log.info("Updating resource %s", res["id"])
+                res["upload"] = upload
+                ckan.call_action(
+                    "resource_update",
+                    res,
+                )
+                break
+        else:
 
-    for res in dataset["resources"]:
-        if res["name"] == file:
-            res["last_modified"] = datetime.utcnow().isoformat()
-            log.info("Updating resource %s", res["id"])
-            ckan.call_action(
-                "resource_update", res, files={"upload": open(path)}
+            log.info("Creating new resource for file")
+            res = ckan.call_action(
+                "resource_create",
+                {
+                    "package_id": dataset["id"],
+                    "name": filename,
+                    "url": filename,
+                    "parent_res": resource["id"],
+                    "zip_extracted": True,
+                    "last_modified": datetime.utcnow().isoformat(),
+                    "upload": upload,
+                },
             )
-            break
-    else:
-        log.info("Creating new resource for file")
-        res = ckan.call_action(
-            "resource_create",
-            {
-                "package_id": dataset["id"],
-                "name": file,
-                "url": file,
-                "parent_res": resource["id"],
-                "zip_extracted": "True",
-                "last_modified": datetime.utcnow().isoformat(),
-            },
-            files={"upload": open(path)},
-        )
 
     return res["id"]
 
 
-def submit_to_datapusher(res_id: str, ckan: ckanapi.LocalCKAN):
-    # Give datapusher 10 seconds to start
-    datapusher_working = True
-    datapusher_present = True
-    poll_time = 10
-    count = 0
-    timeout = 1200
-    last_update_checked = False
-    log.info("Checking to see if datapusher has been triggered...")
-    while datapusher_working and datapusher_present and count < timeout:
-        count += 1
-        if count % poll_time == 0:
-            try:
-                datapusher_task = ckan.call_action(
-                    "task_status_show",
-                    {
-                        "entity_id": res_id,
-                        "task_type": "datapusher",
-                        "key": "datapusher",
-                    },
-                )
-                datapusher_working = datapusher_task.get("state", "") in [
-                    "pending",
-                    "submitting",
-                ]
-                if datapusher_working and not last_update_checked:
-                    if (
-                        "last_updated" not in datapusher_task
-                        or (
-                            datetime.utcnow()
-                            - tk.h.date_str_to_datetime(
-                                datapusher_task["last_updated"]
-                            )
-                        ).total_seconds()
-                        > 86400
-                    ):
-                        log.info(
-                            "Datapusher is in a stale pending state,"
-                            " re-submitting job..."
-                        )
-                        log.info(
-                            "Waiting for datapusher to ingest resource... "
-                        )
-                        ckan.call_action(
-                            "datapusher_submit", {"resource_id": res_id}
-                        )
-                    last_update_checked = True
-            except:
-                datapusher_present = False
-
-        if datapusher_working and datapusher_present:
-            if count == 1:
-                log.info("Waiting for datapusher to ingest resource... ")
-        time.sleep(1)
-
-    if datapusher_present:
-        log.info(
-            "Datapusher has finished pushing resource, continuing with Zip"
-            " extraction..."
-        )
-
-
 def has_interesting_files(path: str) -> bool:
     for g in os.listdir(path):
-        if g.split(".").pop().lower() in INTERESTING_EXTENSIONS:
+        if g.split(".").pop().lower() in _interesting_extensions():
             return True
     return False
 
 
-def recurse_directory(path: str) -> Optional[tuple[str, str]]:
+def recurse_directory(path: str) -> Iterable[tuple[str, str]]:
     if (
         len([fn for fn in os.listdir(path)]) < 3
         and len([ndir for ndir in os.listdir(path) if os.path.isdir(ndir)])
@@ -214,7 +160,7 @@ def recurse_directory(path: str) -> Optional[tuple[str, str]]:
     ):
         for f in os.listdir(path):
             if os.path.isdir(os.path.join(path, f)):
-                return recurse_directory(os.path.join(path, f))
+                yield from recurse_directory(os.path.join(path, f))
 
     os.chdir(path)
     numInteresting = len(
@@ -223,21 +169,21 @@ def recurse_directory(path: str) -> Optional[tuple[str, str]]:
             for f in os.listdir(path)
             if (
                 os.path.isfile(os.path.join(path, f))
-                and (f.split(".").pop().lower() in INTERESTING_EXTENSIONS)
+                and (f.split(".").pop().lower() in _interesting_extensions())
             )
         ]
     )
     for f in os.listdir(path):
-        if os.path.isfile(os.path.join(path, f)) and numInteresting > 1:
-            if f.split(".").pop().lower() in INTERESTING_EXTENSIONS:
-                return (f, os.path.join(path, f))
+        if os.path.isfile(os.path.join(path, f)) and numInteresting:
+            if f.split(".").pop().lower() in _interesting_extensions():
+                yield (f, os.path.join(path, f))
         if os.path.isdir(os.path.join(path, f)):
             # only zip up folders if they contain at least one interesting file
             if has_interesting_files(os.path.join(path, f)):
                 zipf = zipfile.ZipFile(f + ".zip", "w", zipfile.ZIP_DEFLATED)
                 zipdir(f, zipf)
                 zipf.close()
-                return (f, f + ".zip")
+                yield (f + ".zip", f + ".zip")
 
 
 def zipdir(path: str, ziph: zipfile.ZipFile):

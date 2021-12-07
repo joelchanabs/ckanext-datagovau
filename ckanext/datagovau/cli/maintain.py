@@ -43,21 +43,17 @@ def zip_extract(
     with ctx.meta["flask_app"].test_request_context():
         for resource, dataset in z.select_extractable_resources(ckan, ids):
             with temp_dir(resource["id"], tmp_dir) as path:
-                result = z.extract_resource(resource, path)
-                if not result:
-                    continue
-                try:
-                    updated_resource_id = z.update_resource(
-                        *result, ckan, resource, dataset
-                    )
-                except ckanapi.ValidationError:
-                    log.error(
-                        "Cannot update resource {} from dataset {}".format(
-                            resource["id"], dataset["id"]
+                for result in z.extract_resource(resource, path):
+                    try:
+                        z.update_resource(
+                            *result, ckan, resource, dataset
                         )
-                    )
-                    if skip_errors:
-                        continue
-                    raise
-
-                z.submit_to_datapusher(updated_resource_id, ckan)
+                    except ckanapi.ValidationError:
+                        log.error(
+                            "Cannot update resource {} from dataset {}".format(
+                                resource["id"], dataset["id"]
+                            )
+                        )
+                        if skip_errors:
+                            continue
+                        raise

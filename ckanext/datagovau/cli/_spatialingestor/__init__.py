@@ -11,16 +11,13 @@ spatial ingestor for data.gov.au
 """
 from __future__ import annotations
 
-import errno
 import glob
 import grp
-import json
 import logging
 import os
 import pwd
 import shutil
 import subprocess
-import time
 import contextlib
 from typing import Any, NamedTuple, Optional, Dict, List, NoReturn
 import urllib
@@ -30,13 +27,14 @@ from datetime import datetime
 
 import lxml.etree as et
 import psycopg2
-import requests
 
 import ckan.plugins.toolkit as tk
 
 from osgeo import osr
+from ckanext.datagovau import utils
+from osgeo_utils import gdal_retile
+from osgeo_utils.samples import ogr2ogr
 
-from ckanext.datagovau import ogr2ogr, gdal_retile, utils
 from .geoserver import get_geoserver
 from .exc import BadConfig, IngestionFail
 
@@ -88,7 +86,6 @@ class GroupedResources(NamedTuple):
         return cls(shp, kml, tab, tiff, grid, sld)
 
 
-SPATIAL_INGESTOR_AUTHORIZATION = os.environ["SPATIAL_INGESTOR_AUTHORIZATION"]
 GEOSERVER_DATASTORE_URL = os.environ["GEOSERVER_DATASTORE_URL"]
 
 # Sometimes the geoserver gets overloaded. So, we re-try a number of times for
@@ -140,24 +137,6 @@ def _get_db_settings():
     )
 
 
-def _make_request(command, url, **kwargs):
-
-    count = 0
-    time_out = int(_get_request_timeout())
-
-    while count < time_out:
-        try:
-            r = command(url, **kwargs)
-        except Exception as e:
-            print(e)
-            count += 10
-            time.sleep(10)
-        else:
-            return r
-
-    _failure("Failed to make request {} : {}".format(command, url))
-
-
 def _get_db_param_string(db_settings):
     result = (
         "PG:dbname='"
@@ -181,10 +160,10 @@ def _clean_dir(tempdir: str):
     shutil.rmtree(tempdir, ignore_errors=True)
 
 
-def _get_cursor(db_settings):
+def _get_cursor():
     # Connect to an existing database
     try:
-        conn = psycopg2.connect(**db_settings)
+        conn = psycopg2.connect(GEOSERVER_DATASTORE_URL)
     except:
         _failure("I am unable to connect to the database.")
     # Open a cursor to perform database operations
@@ -201,7 +180,7 @@ def _failure(msg: str) -> NoReturn:
 
 
 def _clear_old_table(dataset: dict[str, Any]) -> str:
-    cur, conn = _get_cursor(_get_db_settings())
+    cur, conn = _get_cursor()
     table_name = "ckan_" + dataset["id"].replace("-", "_")
     cur.execute('DROP TABLE IF EXISTS "' + table_name + '"')
     cur.close()
@@ -864,7 +843,7 @@ def _convert_resources(
 
 
 def _get_geojson(using_kml: bool, table_name: str) -> tuple[str, str, str]:
-    cur, conn = _get_cursor(_get_db_settings())
+    cur, conn = _get_cursor()
     if using_kml:
         try:
             cur.execute(
@@ -1410,12 +1389,6 @@ def _get_target_formats() -> list[str]:
 def _get_source_formats() -> list[str]:
     return tk.aslist(
         tk.config.get("ckanext.datagovau.spatialingestor.source_formats", [])
-    )
-
-
-def _get_request_timeout() -> int:
-    return tk.asint(
-        tk.config.get("ckanext.datagovau.spatialingestor.request_timeout")
     )
 
 
