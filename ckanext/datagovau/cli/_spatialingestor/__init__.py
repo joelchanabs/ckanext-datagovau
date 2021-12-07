@@ -170,7 +170,7 @@ def _clean_dir(tempdir: str):
 def _get_cursor():
     # Connect to an existing database
     try:
-        conn = psycopg2.connect(GEOSERVER_DATASTORE_URL)
+        conn = psycopg2.connect(_get_datastore_url())
     except:
         _failure("I am unable to connect to the database.")
     # Open a cursor to perform database operations
