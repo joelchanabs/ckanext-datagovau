@@ -15,6 +15,7 @@ CONFIG_TIMEOUT = "ckanext.datagovau.spatialingestor.request_timeout"
 
 DEFAULT_TIMEOUT = 10
 
+
 def _timeout():
     return tk.asint(tk.config.get(CONFIG_TIMEOUT, DEFAULT_TIMEOUT))
 
@@ -49,7 +50,9 @@ class GeoServer(NamedTuple):
     def drop_workspace(self, workspace: str):
         url = self._workspace_url(workspace)
         with self._session() as s:
-            return s.delete(url + "?recurse=true&quietOnNotFound", timeout=_timeout())
+            return s.delete(
+                url + "?recurse=true&quietOnNotFound", timeout=_timeout()
+            )
 
     def create_workspace(self, workspace: str):
         url = self._workspace_url()

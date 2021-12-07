@@ -19,7 +19,17 @@ import pwd
 import shutil
 import subprocess
 import contextlib
-from typing import Any, Container, Iterable, NamedTuple, Optional, Dict, List, NoReturn, TypeVar
+from typing import (
+    Any,
+    Container,
+    Iterable,
+    NamedTuple,
+    Optional,
+    Dict,
+    List,
+    NoReturn,
+    TypeVar,
+)
 import urllib
 import re
 
@@ -44,9 +54,9 @@ ResourceGroup = List[Dict[str, Any]]
 
 T = TypeVar("T")
 
+
 def _contains(value: Container[T], parts: Iterable[T]) -> bool:
     return any(part in value for part in parts)
-
 
 
 class GroupedResources(NamedTuple):
@@ -70,7 +80,7 @@ class GroupedResources(NamedTuple):
 
         for resource in dataset["resources"]:
             fmt = resource["format"].lower()
-            is_source = fmt in source_formats
+            is_source = _contains(fmt, source_formats)
 
             if "/geoserver" in resource["url"]:
                 continue
@@ -118,9 +128,7 @@ def _get_db_settings():
     url = _get_datastore_url()
     match = re.match("".join(regex), url)
     if not match:
-        raise BadConfig(
-            f"Invalid datastore.url: {url}"
-        )
+        raise BadConfig(f"Invalid datastore.url: {url}")
     postgis_info = match.groupdict()
 
     db_port = postgis_info.get("db_port", "")
@@ -1389,6 +1397,7 @@ def _get_source_formats() -> list[str]:
     return tk.aslist(
         tk.config.get("ckanext.datagovau.spatialingestor.source_formats", [])
     )
+
 
 def _get_datastore_url() -> str:
     return tk.config["ckanext.datagovau.spatialingestor.datastore.url"]
