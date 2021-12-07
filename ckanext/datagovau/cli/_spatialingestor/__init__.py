@@ -86,14 +86,6 @@ class GroupedResources(NamedTuple):
         return cls(shp, kml, tab, tiff, grid, sld)
 
 
-GEOSERVER_DATASTORE_URL = os.environ["GEOSERVER_DATASTORE_URL"]
-
-# Sometimes the geoserver gets overloaded. So, we re-try a number of times for
-# Post/put queries.
-sleep_duration = 20  # in seconds
-num_retries = 30
-
-
 def _get_geoserver_data_dir(native_name: str) -> str:
     name = tk.config.get(
         "ckanext.datagovau.spatialingestor.geoserver.base_dir"
@@ -117,10 +109,11 @@ def _get_db_settings():
         "(?P<db_name>[\\w.-]*)",
     ]
 
-    match = re.match("".join(regex), GEOSERVER_DATASTORE_URL)
+    url = _get_datastore_url()
+    match = re.match("".join(regex), url)
     if not match:
         raise BadConfig(
-            f"Invalid GEOSERVER_DATASTORE_URL: {GEOSERVER_DATASTORE_URL}"
+            f"Invalid datastore.url: {url}"
         )
     postgis_info = match.groupdict()
 
@@ -1365,7 +1358,7 @@ def _get_dataset(dataset_id: str) -> Optional[dict[str, Any]]:
 
 
 def _get_username():
-    return tk.config.get("ckanext.datagovau.spatialingestor.username")
+    return tk.config.get("ckanext.datagovau.spatialingestor.username", "")
 
 
 def _get_blacklisted_orgs() -> list[str]:
@@ -1390,6 +1383,9 @@ def _get_source_formats() -> list[str]:
     return tk.aslist(
         tk.config.get("ckanext.datagovau.spatialingestor.source_formats", [])
     )
+
+def _get_datastore_url() -> str:
+    return tk.config["ckanext.datagovau.spatialingestor.datastore.url"]
 
 
 def call_action(action: str, data: dict[str, Any], ignore_auth=False) -> Any:

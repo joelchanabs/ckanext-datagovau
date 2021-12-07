@@ -9,6 +9,15 @@ import requests
 import ckan.plugins.toolkit as tk
 from .exc import BadConfig
 
+CONFIG_URL = "ckanext.datagovau.spatialingestor.geoserver.url"
+CONFIG_PUBLIC_URL = "ckanext.datagovau.spatialingestor.geoserver.public_url"
+CONFIG_TIMEOUT = "ckanext.datagovau.spatialingestor.request_timeout"
+
+DEFAULT_TIMEOUT = 10
+
+def _timeout():
+    return tk.asint(tk.config.get(CONFIG_TIMEOUT, DEFAULT_TIMEOUT))
+
 
 class GeoServer(NamedTuple):
     host: str
@@ -35,12 +44,12 @@ class GeoServer(NamedTuple):
     def check_workspace(self, workspace: str) -> bool:
         url = self._workspace_url(workspace)
         with self._session() as s:
-            return s.head(url).ok
+            return s.head(url, timeout=_timeout()).ok
 
     def drop_workspace(self, workspace: str):
         url = self._workspace_url(workspace)
         with self._session() as s:
-            return s.delete(url + "?recurse=true&quietOnNotFound")
+            return s.delete(url + "?recurse=true&quietOnNotFound", timeout=_timeout())
 
     def create_workspace(self, workspace: str):
         url = self._workspace_url()
@@ -48,13 +57,14 @@ class GeoServer(NamedTuple):
             return s.post(
                 url,
                 json={"workspace": {"name": workspace}},
+                timeout=_timeout(),
             )
 
     def create_store(self, workspace: str, is_cs: bool, data: dict[str, Any]):
         url = self._store_url(workspace, is_cs)
         with self._session() as s:
             # POST creates, PUT updates
-            return s.post(url, json=data)
+            return s.post(url, json=data, timeout=_timeout())
 
     def create_layer(
         self, workspace: str, is_cs: bool, store: str, data: dict[str, Any]
@@ -62,7 +72,7 @@ class GeoServer(NamedTuple):
         url = self._layer_url(workspace, is_cs, store)
         with self._session() as s:
             # POST creates, PUT updates
-            return s.post(url, json=data)
+            return s.post(url, json=data, timeout=_timeout())
 
     def get_style(self, workspace: str, style: str, quiet: bool = False):
         url = self._style_url(workspace, style)
@@ -70,17 +80,17 @@ class GeoServer(NamedTuple):
         if quiet:
             params["quietOnNotFound"] = True
         with self._session() as s:
-            return s.get(url, params=params)
+            return s.get(url, params=params, timeout=_timeout())
 
     def create_style(self, workspace: str, data: dict[str, Any]):
         url = self._style_url(workspace)
         with self._session() as s:
-            return s.post(url, json=data)
+            return s.post(url, json=data, timeout=_timeout())
 
     def delete_style(self, workspace: str, style: str):
         url = self._style_url(workspace, style)
         with self._session() as s:
-            return s.delete(url)
+            return s.delete(url, timeout=_timeout())
 
     def update_style(
         self,
@@ -97,6 +107,7 @@ class GeoServer(NamedTuple):
                 data=data,
                 headers={"Content-type": content_type},
                 params={"raw": raw},
+                timeout=_timeout(),
             )
 
     def add_style(
@@ -104,7 +115,7 @@ class GeoServer(NamedTuple):
     ):
         url = f"{self.host}rest/layers/{layer}"
         with self._session() as s:
-            return s.put(url, json=data)
+            return s.put(url, json=data, timeout=_timeout())
 
     def _workspace_url(self, workspace: str = "") -> str:
         return f"{self.host}rest/workspaces/{workspace}"
@@ -146,8 +157,8 @@ def get_geoserver() -> GeoServer:
         "/",
         r"(?P<db_name>[\w.-]*)",
     ]
-    admin_url = os.environ["GEOSERVER_ADMIN_URL"]
-    public_url = os.environ["CKAN_SITE_URL"] + "/geoserver"
+    admin_url = tk.config[CONFIG_URL]
+    public_url = tk.config[CONFIG_PUBLIC_URL]
 
     match = re.match("".join(regex), admin_url)
 
