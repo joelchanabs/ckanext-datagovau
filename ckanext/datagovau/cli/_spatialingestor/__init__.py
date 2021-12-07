@@ -34,6 +34,7 @@ import urllib
 import re
 
 from datetime import datetime
+import zipfile
 
 import lxml.etree as et
 import psycopg2
@@ -41,6 +42,7 @@ import psycopg2
 import ckan.plugins.toolkit as tk
 
 from osgeo import osr
+import requests
 from ckanext.datagovau import utils
 from osgeo_utils import gdal_retile
 from osgeo_utils.samples import ogr2ogr
@@ -53,6 +55,23 @@ log = logging.getLogger(__name__)
 ResourceGroup = List[Dict[str, Any]]
 
 T = TypeVar("T")
+
+CRS_MAPPING = {
+    "EPSG:28356": ["GDA_1994_MGA_Zone_56", "GDA94_MGA_zone_56"],
+    "EPSG:28355": ["GDA_1994_MGA_Zone_55", "GDA94_MGA_zone_55"],
+    "EPSG:28354": ["GDA_1994_MGA_Zone_54", "GDA94_MGA_zone_54"],
+    "EPSG:4283": [
+        "GCS_GDA_1994",
+        'GEOGCS["GDA94",DATUM["D_GDA_1994",SPHEROID["GRS_1980"',
+    ],
+    "ESRI:102029": ["Asia_South_Equidistant_Conic"],
+    "EPSG:3577": ["Australian_Albers_Equal_Area_Conic_WGS_1984"],
+    "EPSG:3857": ["WGS_1984_Web_Mercator_Auxiliary_Sphere"],
+    "EPSG:4326": [
+        "MapInfo Generic Lat/Long",
+        'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984"',
+    ],
+}
 
 
 def _contains(value: Container[T], parts: Iterable[T]) -> bool:
@@ -76,7 +95,7 @@ class GroupedResources(NamedTuple):
         grid = []
         sld = []
 
-        source_formats = map(str.lower, _get_source_formats())
+        source_formats = {f.lower() for f in _get_source_formats()}
 
         for resource in dataset["resources"]:
             fmt = resource["format"].lower()
@@ -217,72 +236,50 @@ def _set_geoserver_ownership(data_dir):
 
 
 def _load_esri_shapefiles(
-    shp_res: dict[str, Any], table_name: str, tempdir: str
+    resource: dict[str, Any], table_name: str, tempdir: str
 ) -> str:
-    log.debug("_load_esri_shapefiles():: shp_res = %s", shp_res)
-    log.debug("Using SHP file %s", shp_res["url"])
+    log.debug("_load_esri_shapefiles():: shp_res = %s", resource["id"])
+    log.debug("Using SHP file %s", resource["url"])
 
-    if any(shp_res["url"].lower().endswith(x) for x in ["shp", "shapefile"]):
-        urllib.request.urlretrieve(shp_res["url"], "input.shp")
-        log.debug("SHP downloaded")
+    if any(resource["url"].lower().endswith(x) for x in ["shp", "shapefile"]):
+        _download(resource["url"], "input.shp")
     else:
-        with open("input.zip", "wb") as f:
-            f.write(urllib.request.urlopen(shp_res["url"]).read())
-        log.debug("SHP downloaded")
-
-        subprocess.call(["unzip", "-j", "input.zip"])
-        log.debug("SHP unzipped")
+        _download(resource["url"], "input.zip")
+        archive = zipfile.ZipFile("input.zip")
+        archive.extractall()
 
     shpfiles = glob.glob("*.[sS][hH][pP]")
     prjfiles = glob.glob("*.[pP][rR][jJ]")
     if not shpfiles:
-        _failure("No shp files found in zip " + shp_res["url"])
-    log.debug("converting to pgsql " + table_name + " " + shpfiles[0])
+        _failure("No shp files found in zip " + resource["url"])
+    log.debug(f"converting to pgsql {table_name} {shpfiles[0]}")
 
-    if len(prjfiles) > 0:
+    if prjfiles:
         prj_txt = open(prjfiles[0], "r").read()
         log.debug(
-            "spatialingestor::_load_esri_shapefiles():: prj_txt = ", prj_txt
+            "spatialingestor::_load_esri_shapefiles():: prj_txt = %s", prj_txt
         )
         sr = osr.SpatialReference()
         sr.ImportFromESRI([prj_txt])
-        log.debug("spatialingestor::_load_esri_shapefiles():: sr = ", sr)
+        log.debug("spatialingestor::_load_esri_shapefiles():: sr = %s", sr)
         res = sr.AutoIdentifyEPSG()
         if res == 0:  # success
             native_crs = (
                 sr.GetAuthorityName(None) + ":" + sr.GetAuthorityCode(None)
             )
         else:
-            mapping = {
-                "EPSG:28356": ["GDA_1994_MGA_Zone_56", "GDA94_MGA_zone_56"],
-                "EPSG:28355": ["GDA_1994_MGA_Zone_55", "GDA94_MGA_zone_55"],
-                "EPSG:28354": ["GDA_1994_MGA_Zone_54", "GDA94_MGA_zone_54"],
-                "EPSG:4283": [
-                    "GCS_GDA_1994",
-                    'GEOGCS["GDA94",DATUM["D_GDA_1994",SPHEROID["GRS_1980"',
-                ],
-                "ESRI:102029": ["Asia_South_Equidistant_Conic"],
-                "EPSG:3577": ["Australian_Albers_Equal_Area_Conic_WGS_1984"],
-                "EPSG:3857": ["WGS_1984_Web_Mercator_Auxiliary_Sphere"],
-                "EPSG:4326": [
-                    "MapInfo Generic Lat/Long",
-                    'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984"',
-                ],
-            }
-            for key, values in mapping.items():
-                if any([v in prj_txt for v in values]):
+            for key, values in CRS_MAPPING.items():
+                if _contains(prj_txt, values):
                     native_crs = key
                     break
             else:
                 # If searching the mapping items yielded nothing,
                 # assign default CRS.
                 native_crs = "EPSG:4326"
-                # failure(
-                #    dataset['title'] + " has unknown projection: " + prj_txt)
+
     else:
         # if wyndham then GDA_1994_MGA_Zone_55 EPSG:28355
         native_crs = "EPSG:4326"
-
     pargs = [
         " ",
         "-f",
@@ -305,34 +302,34 @@ def _load_esri_shapefiles(
         "-overwrite",
     ]
 
-    res = ogr2ogr.main(pargs)
-    if not res:
+    exit_code = ogr2ogr.main(pargs)
+    if exit_code:
         _failure("Ogr2ogr: Failed to convert file to PostGIS")
 
     return native_crs
 
 
-def _load_kml_resources(kml_res: dict[str, Any], table_name: str) -> str:
-    kml_res["url"] = kml_res["url"].replace("https", "http")
-    log.debug("Using KML file " + kml_res["url"])
+def _load_kml_resources(resource: dict[str, Any], table_name: str) -> str:
+    log.debug("Using KML file %s", resource["url"])
     native_crs = "EPSG:4326"
     # if kml ogr2ogr http://gis.stackexchange.com/questions/33102
     # /how-to-import-kml-file-with-custom-data-to-postgres-postgis-database
-    if kml_res["format"] == "kmz" or "kmz" in kml_res["url"].lower():
-        with open("input.zip", "wb") as f:
-            f.write(urllib.request.urlopen(kml_res["url"]).read())
-        subprocess.call(["unzip", "-j", "input.zip"])
+    if resource["format"] == "kmz" or "kmz" in resource["url"].lower():
+        _download(resource["url"], "input.zip")
+        archive = zipfile.ZipFile("input.zip")
+        archive.extractall()
         log.debug("KMZ unziped")
+
         kmlfiles = glob.glob("*.[kK][mM][lL]")
         if len(kmlfiles) == 0:
-            _failure("No kml files found in zip " + kml_res["url"])
+            _failure("No kml files found in zip " + resource["url"])
         else:
             kml_file = kmlfiles[0]
     else:
-        filepath, headers = urllib.urlretrieve(kml_res["url"], "input.kml")
+        _download(resource["url"], "input.kml")
         kml_file = "input.kml"
 
-    log.debug("Changing kml folder name in " + kml_file)
+    log.debug("Changing kml folder name in %s", kml_file)
     tree = et.parse(kml_file)
     element = tree.xpath(
         "//kml:Folder/kml:name",
@@ -363,9 +360,9 @@ def _load_kml_resources(kml_res: dict[str, Any], table_name: str) -> str:
             element[x].text = table_name
     else:
         log.debug("no Folder tag found")
-    with open(table_name + ".kml", "w") as ofile:
+    with open(table_name + ".kml", "wb") as ofile:
         ofile.write(et.tostring(tree))
-    log.debug("converting to pgsql " + table_name + ".kml")
+    log.debug("converting to pgsql %s.kml", table_name)
 
     pargs = [
         "",
@@ -389,26 +386,24 @@ def _load_kml_resources(kml_res: dict[str, Any], table_name: str) -> str:
         "-overwrite",
     ]
 
-    res = ogr2ogr.main(pargs)
-    if not res:
+    exit_code = ogr2ogr.main(pargs)
+    if exit_code:
         _failure("Ogr2ogr: Failed to convert file to PostGIS")
 
     return native_crs
 
 
-def _load_tab_resources(tab_res: dict[str, Any], table_name: str) -> str:
-    url = tab_res["url"].replace("https", "http")
-    log.debug("using TAB file " + url)
-    with open("input.zip", "wb") as f:
-        f.write(urllib.request.urlopen(tab_res["url"]).read())
+def _load_tab_resources(resource: dict[str, Any], table_name: str) -> str:
+    log.debug("using TAB file %s", resource["url"])
+    _download(resource["url"], "input.zip")
     log.debug("TAB archive downloaded")
-
-    subprocess.call(["unzip", "-j", "input.zip"])
+    archive = zipfile.ZipFile("input.zip")
+    archive.extractall()
     log.debug("TAB unziped")
 
     tabfiles = glob.glob("*.[tT][aA][bB]")
     if len(tabfiles) == 0:
-        _failure("No mapinfo tab files found in zip " + tab_res["url"])
+        _failure("No mapinfo tab files found in zip " + resource["url"])
 
     tab_file = tabfiles[0]
 
@@ -436,39 +431,39 @@ def _load_tab_resources(tab_res: dict[str, Any], table_name: str) -> str:
         "-overwrite",
     ]
 
-    res = ogr2ogr.main(pargs)
-    log.debug(res)
-    if not res:
+    exit_code = ogr2ogr.main(pargs)
+    log.debug(exit_code)
+    if exit_code:
         _failure("Ogr2ogr: Failed to convert file to PostGIS")
     os.environ["PGCLIENTENCODING"] = "windows-1252"
-    res = ogr2ogr.main(pargs)
-    log.debug(res)
-    if not res:
+    exit_code = ogr2ogr.main(pargs)
+    log.debug(exit_code)
+    if exit_code:
         _failure("Ogr2ogr: Failed to convert file to PostGIS")
 
     return native_crs
 
 
-def _load_tiff_resources(tiff_res: dict[str, Any], table_name: str) -> str:
-    url = tiff_res["url"].replace("https", "http")
-    log.debug("using GeoTIFF file " + url)
+def _load_tiff_resources(resource: dict[str, Any], table_name: str) -> str:
+    log.debug("using GeoTIFF file %s", resource["url"])
 
-    if not any([url.lower().endswith(x) for x in ["tif", "tiff"]]):
-        filepath, headers = urllib.urlretrieve(url, "input.zip")
+    if not any([resource["url"].lower().endswith(x) for x in ["tif", "tiff"]]):
+        _download(resource["url"], "input.zip")
         log.debug("GeoTIFF archive downloaded")
 
-        subprocess.call(["unzip", "-j", filepath])
+        archive = zipfile.ZipFile("input.zip")
+        archive.extractall()
         log.debug("GeoTIFF unziped")
     else:
-        urllib.urlretrieve(url, "input.tiff")
+        _download(resource["url"], "input.tiff")
 
     tifffiles = glob.glob("*.[tT][iI][fF]") + glob.glob("*.[tT][iI][fF][fF]")
     if len(tifffiles) == 0:
-        _failure("No TIFF files found in " + tiff_res["url"])
+        _failure("No TIFF files found in " + resource["url"])
 
     native_crs = "EPSG:4326"
 
-    large_file = os.stat(tifffiles[0]).st_size > long(
+    large_file = os.stat(tifffiles[0]).st_size > tk.asint(
         tk.config.get("ckanext.datagovau.spatialingestor.large_file_threshold")
     )
 
@@ -585,15 +580,14 @@ def _load_tiff_resources(tiff_res: dict[str, Any], table_name: str) -> str:
 
 
 def _load_grid_resources(
-    grid_res: dict[str, Any], table_name: str, tempdir: str
+    resource: dict[str, Any], table_name: str, tempdir: str
 ) -> str:
-    grid_res["url"] = grid_res["url"].replace("https", "http")
-    log.debug("Using ArcGrid file " + grid_res["url"])
-
-    filepath, headers = urllib.urlretrieve(grid_res["url"], "input.zip")
+    log.debug("Using ArcGrid file %s", resource["url"])
+    _download(resource["url"], "input.zip")
     log.debug("ArcGrid downloaded")
 
-    subprocess.call(["unzip", "-j", filepath])
+    archive = zipfile.ZipFile("input.zip")
+    archive.extractall()
     log.debug("ArcGrid unzipped")
 
     native_crs = "EPSG:4326"
@@ -624,7 +618,7 @@ def _load_grid_resources(
 
     subprocess.call(pargs)
 
-    large_file = os.stat(table_name + "_temp1.tiff").st_size > long(
+    large_file = os.stat(table_name + "_temp1.tiff").st_size > tk.asint(
         tk.config.get("ckanext.datagovau.spatialingestor.large_file_threshold")
     )
 
@@ -752,8 +746,8 @@ def _apply_sld(
                 f.write(r.content)
             filepath = "input.sld"
         else:
-            log.error("error downloading SLD")
-            return
+            filepath = "input.sld"
+            _download(url, filepath)
     elif filepath:
         log.info("sld downloaded")
         pass
@@ -853,6 +847,7 @@ def _get_geojson(using_kml: bool, table_name: str) -> tuple[str, str, str]:
     cur, conn = _get_cursor()
     if using_kml:
         try:
+            # TODO: do you need this at all?
             cur.execute(
                 (
                     'alter table "{}" DROP "description" RESTRICT, '
@@ -1190,6 +1185,7 @@ def do_ingesting(dataset_id: str, force: bool):
             " = %s",
             datastore,
         )
+
         try:
             _perform_workspace_requests(
                 datastore, workspace, table_name if using_grid else None
@@ -1223,7 +1219,18 @@ def do_ingesting(dataset_id: str, force: bool):
                     "nativeName": table_name,
                     "title": dataset["title"],
                     "srs": native_crs,
-                    "datastore": datastore,
+                    # TODO: compute attributes
+                    "attributes": {
+                        "attribute": [
+                            {
+                                "name": "the_geom",
+                                "minOccurs": 0,
+                                "maxOccurs": 1,
+                                "nillable": True,
+                                "binding": "org.locationtech.jts.geom.Point",
+                            }
+                        ]
+                    },
                 }
             }
 
@@ -1251,12 +1258,14 @@ def do_ingesting(dataset_id: str, force: bool):
                     f"Failed to create Geoserver layer {r.url}: {r.content}"
                 )
         except IngestionFail as e:
-            log.info("{}: {}".format(type(e), e))
+            log.info("%s: %s", type(e), e)
             clean_assets(dataset_id)
             return
 
         sldfiles = glob.glob("*.[sS][lL][dD]")
-        log.debug(sldfiles, resources.sld)
+        log.debug(
+            "SLD Files %s. Grouped resources: %s", sldfiles, resources.sld
+        )
         if len(sldfiles):
             _apply_sld(
                 os.path.splitext(os.path.basename(sldfiles[0]))[0],
@@ -1407,3 +1416,12 @@ def call_action(action: str, data: dict[str, Any], ignore_auth=False) -> Any:
     return tk.get_action(action)(
         {"user": _get_username(), "ignore_auth": ignore_auth}, data
     )
+
+
+def _download(url: str, name: str):
+    req = requests.get(url, stream=True)
+    with open(name, "wb") as dest:
+        for chunk in req.iter_content(1024 * 1024):
+            dest.write(chunk)
+
+    log.debug("Downloaded %s from %s", name, url)

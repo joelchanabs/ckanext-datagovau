@@ -3,6 +3,7 @@ from typing import Any, List
 
 from typing_extensions import TypedDict
 
+
 class DdgStatistics(TypedDict):
     dataset_count: int
     unpub_data_count: int
@@ -13,5 +14,6 @@ class DdgStatistics(TypedDict):
 class SchemingChoice(TypedDict):
     value: Any
     label: Any
+
 
 SchemingChoices = List[SchemingChoice]

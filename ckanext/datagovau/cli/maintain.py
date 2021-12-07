@@ -11,6 +11,7 @@ from ..utils import temp_dir
 
 log = logging.getLogger(__name__)
 
+
 @click.group()
 @click.help_option("-h", "--help")
 def maintain():
@@ -21,9 +22,21 @@ def maintain():
 @maintain.command()
 @click.argument("ids", nargs=-1)
 @click.option("-u", "--username", help="CKAN user who performs extraction.")
-@click.option("--tmp-dir", default="/tmp", help="Root folder for temporal files")
-@click.option("--days-to-buffer", "days", default=3, type=int, help="Extract datasets modified up to <days> ago")
-@click.option("--skip-errors", is_flag=True, help="Do not interrupt extraction even after an error")
+@click.option(
+    "--tmp-dir", default="/tmp", help="Root folder for temporal files"
+)
+@click.option(
+    "--days-to-buffer",
+    "days",
+    default=3,
+    type=int,
+    help="Extract datasets modified up to <days> ago",
+)
+@click.option(
+    "--skip-errors",
+    is_flag=True,
+    help="Do not interrupt extraction even after an error",
+)
 @click.help_option("-h", "--help")
 @click.pass_context
 def zip_extract(
@@ -45,9 +58,7 @@ def zip_extract(
             with temp_dir(resource["id"], tmp_dir) as path:
                 for result in z.extract_resource(resource, path):
                     try:
-                        z.update_resource(
-                            *result, ckan, resource, dataset
-                        )
+                        z.update_resource(*result, ckan, resource, dataset)
                     except ckanapi.ValidationError:
                         log.error(
                             "Cannot update resource {} from dataset {}".format(
