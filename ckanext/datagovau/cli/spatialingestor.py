@@ -48,7 +48,7 @@ def perform_ingest(scope: str, force: bool, organization: tuple[str]):
     "-s",
     "--skip-grids",
     is_flag=True,
-    default=True,
+    default=False,
     help="Do not purge grid datasets",
 )
 @click.argument("scope")

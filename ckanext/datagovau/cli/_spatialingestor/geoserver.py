@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import os
 from typing import Any, NamedTuple
 
 import requests

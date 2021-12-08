@@ -3,6 +3,13 @@ from __future__ import annotations
 import shutil
 import tempfile
 import contextlib
+import logging
+from typing import Container, Iterable, TypeVar
+
+import requests
+
+T = TypeVar("T")
+log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
@@ -12,3 +19,16 @@ def temp_dir(suffix: str, dir: str):
         yield path
     finally:
         shutil.rmtree(path)
+
+
+def download(url: str, name: str):
+    req = requests.get(url, stream=True)
+    with open(name, "wb") as dest:
+        for chunk in req.iter_content(1024 * 1024):
+            dest.write(chunk)
+
+    log.debug("Downloaded %s from %s", name, url)
+
+
+def contains(value: Container[T], parts: Iterable[T]) -> bool:
+    return any(part in value for part in parts)
