@@ -24,7 +24,8 @@ def spatial_ingestor():
     ],
 )
 @click.help_option("-h", "--help")
-def perform_ingest(scope: str, force: bool, organization: tuple[str]):
+@click.pass_context
+def perform_ingest(ctx: click.Context, scope: str, force: bool, organization: tuple[str]):
     """
     Performs ingest of spatial data for scope of data, where scope is one of: 'all', 'updated', 'updated-orgs', or <dataset-id>.
     """
@@ -39,8 +40,9 @@ def perform_ingest(scope: str, force: bool, organization: tuple[str]):
         )
 
     with click.progressbar(query) as bar:
-        for pkg in bar:
-            do_ingesting(pkg.id, force)
+        with ctx.meta["flask_app"].test_request_context():
+            for pkg in bar:
+                do_ingesting(pkg.id, force)
 
 
 @spatial_ingestor.command("purge")
