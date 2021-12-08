@@ -587,7 +587,7 @@ def do_ingesting(dataset_id: str, force: bool):
                     ## XXX: if you want to test it locally and you don't have
                     ## access to geoserver's postgis DB, uncomment the line
                     ## below for bypassing the validation error
-                    # "attributes": {"attribute": [{},]},
+                    # "attributes": {"attribute": [{"name": "geom"},]},
                 }
             }
 

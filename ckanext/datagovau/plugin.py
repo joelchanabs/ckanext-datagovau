@@ -1,18 +1,28 @@
 from __future__ import annotations
 
 import inspect
+
 from typing import Any
 import ckan.plugins as p
 import ckan.plugins.toolkit as tk
 
 import ckanext.datagovau.helpers as helpers
-
+from ckanext.xloader.plugin import xloaderPlugin
 import ckan.authz as authz
 
 from . import validators, cli
 
-_original_permission_check = authz.has_user_permission_for_group_or_org
+_original_xnotify = xloaderPlugin.notify
+def _dga_xnotify(self, resource):
+    try:
+        return _original_xnotify(self, resource)
+    except tk.ObjectNotFound:
+        # resource has `deleted` state
+        pass
+xloaderPlugin.notify = _dga_xnotify
 
+
+_original_permission_check = authz.has_user_permission_for_group_or_org
 
 def _dga_permission_check(group_id, user_name, permission):
     stack = inspect.stack()
