@@ -65,7 +65,6 @@ class GeoServer(NamedTuple):
     def create_store(self, workspace: str, is_cs: bool, data: dict[str, Any]):
         url = self._store_url(workspace, is_cs)
         with self._session() as s:
-            # POST creates, PUT updates
             return s.post(url, json=data, timeout=_timeout())
 
     def create_layer(
@@ -73,7 +72,6 @@ class GeoServer(NamedTuple):
     ):
         url = self._layer_url(workspace, is_cs, store)
         with self._session() as s:
-            # POST creates, PUT updates
             return s.post(url, json=data, timeout=_timeout())
 
     def get_style(self, workspace: str, style: str, quiet: bool = False):

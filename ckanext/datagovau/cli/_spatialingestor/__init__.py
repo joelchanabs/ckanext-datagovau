@@ -81,6 +81,7 @@ def _clean_dir(tempdir: str):
 
 def _get_cursor():
     # Connect to an existing database
+
     try:
         conn = psycopg2.connect(config.datastore())
     except:
@@ -344,7 +345,7 @@ def _create_resources_from_formats(
         else ""
     )
 
-    for _format in config.formats("target"):  # ['kml', 'image/png']:
+    for _format in config.formats("target"):
         url = (
             ws_addr
             + "wms?request=GetMap&layers="
@@ -366,8 +367,7 @@ def _create_resources_from_formats(
                     "last_modified": datetime.now().isoformat(),
                 },
             )
-        elif _format == "kml":
-            if _format not in existing_formats:
+        elif _format == "kml" and _format not in existing_formats:
                 log.debug("Creating KML Resource")
                 call_action(
                     "resource_create",
@@ -447,12 +447,11 @@ def _create_resources_from_formats(
 
 
 def _delete_resources(dataset):
+    server = get_geoserver()
     geoserver_resources = [
         res
         for res in dataset["resources"]
-        if "/geoserver" in res["url"]
-        for old_host in ["dga.links.com.au", "data.gov.au"]
-        if old_host in res["url"]
+        if server.public_url in res["url"]
     ]
 
     for res in geoserver_resources:
@@ -492,6 +491,7 @@ def _prepare_everything(
 
 def clean_assets(dataset_id: str, skip_grids: bool = False):
     dataset = _get_dataset(dataset_id)
+
     if not dataset:
         return
 
@@ -584,7 +584,14 @@ def do_ingesting(dataset_id: str, force: bool):
                     "title": dataset["title"],
                     "srs": native_crs,
                     # TODO: compute attributes
-                    "attributes": {"attribute": [{}]},
+                    "attributes": {"attribute": [
+                        {
+                            # "name": "the_geom",
+                            # "minOccurs": 0,
+                            # "maxOccurs": 1,
+                            # "nillable": True,
+                        },
+                    ]},
                 }
             }
 
