@@ -55,7 +55,8 @@ def perform_ingest(ctx: click.Context, scope: str, force: bool, organization: tu
 )
 @click.argument("scope")
 @click.help_option("-h", "--help")
-def perform_purge(scope: str, skip_grids: bool):
+@click.pass_context
+def perform_purge(ctx: click.Context, scope: str, skip_grids: bool):
     """
     Performs purge of nominated scope, where scope is one of: 'all', 'erroneous', or <dataset-id>.
 
@@ -69,11 +70,12 @@ def perform_purge(scope: str, skip_grids: bool):
         )
 
     with click.progressbar(query) as bar:
-        for pkg in bar:
-            if scope == "erroneous" and not may_skip(pkg.id):
-                clean_assets(pkg.id, skip_grids=False)
-            else:
-                clean_assets(pkg.id, skip_grids=skip_grids)
+        with ctx.meta["flask_app"].test_request_context():
+            for pkg in bar:
+                if scope == "erroneous" and not may_skip(pkg.id):
+                    clean_assets(pkg.id, skip_grids=False)
+                else:
+                    clean_assets(pkg.id, skip_grids=skip_grids)
 
 
 # datagovau spatial-ingestor dropuser subcommand.
