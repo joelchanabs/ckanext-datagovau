@@ -455,7 +455,8 @@ def _delete_resources(dataset):
     ]
 
     for res in geoserver_resources:
-        call_action("resource_delete", res, True)
+        with contextlib.suppress(tk.ObjectNotFound):
+            call_action("resource_delete", res, True)
 
 
 def _prepare_everything(
@@ -583,15 +584,10 @@ def do_ingesting(dataset_id: str, force: bool):
                     "nativeName": table_name,
                     "title": dataset["title"],
                     "srs": native_crs,
-                    # TODO: compute attributes
-                    "attributes": {"attribute": [
-                        {
-                            # "name": "the_geom",
-                            # "minOccurs": 0,
-                            # "maxOccurs": 1,
-                            # "nillable": True,
-                        },
-                    ]},
+                    ## XXX: if you want to test it locally and you don't have
+                    ## access to geoserver's postgis DB, uncomment the line
+                    ## below for bypassing the validation error
+                    # "attributes": {"attribute": [{},]},
                 }
             }
 
