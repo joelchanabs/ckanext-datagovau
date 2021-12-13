@@ -9,3 +9,4 @@ ckanext-scheming~=2.1.0
 ckanext-googleanalytics[requirements]~=2.0
 ckanext-toolbelt~=0.0.7
 ckanext-hierarchy~=1.0.1
+git+https://github.com/ckan/ckanext-xloader.git@0.9.0#egg=ckanext-xloader
