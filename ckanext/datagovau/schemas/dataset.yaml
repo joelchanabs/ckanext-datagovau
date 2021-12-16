@@ -161,6 +161,8 @@ dataset_fields:
   label: Jurisdiction
   required: true
   form_placeholder: Commonwealth of Australia
+  form_attrs:
+    data-module: dga-jurisdiction-autofill
 
 - field_name: geospatial_topic
   label: Geospatial Topic

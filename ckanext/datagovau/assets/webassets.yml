@@ -13,3 +13,4 @@ dga-js:
   contents:
     - dga-setup.js
     - dga-breadcrumbs.js
+    - dga-jurisdiction-autofill.js
