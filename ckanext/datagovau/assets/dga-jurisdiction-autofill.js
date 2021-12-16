@@ -17,7 +17,6 @@ ckan.module("dga-jurisdiction-autofill", function ($) {
         },
 
         _onChange: async function (e) {
-            console.log(this.org_field.val());
             if (!this.jurisdiction_entered_manually) {
                 var org_dict = new Promise((ok, fail) => {
                     fetch(this.sandbox.client.call(
