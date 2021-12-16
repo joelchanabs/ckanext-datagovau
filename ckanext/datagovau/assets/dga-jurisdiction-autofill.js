@@ -10,9 +10,7 @@ ckan.module("dga-jurisdiction-autofill", function ($) {
             if (this.new_dataset) {
                 this._onChange(this);
                 this.org_field.on("change", this._onChange.bind(this));
-                this.el.on("input", function () {
-                    this.jurisdiction_entered_manually = true;
-                });
+                this.el.on("input", this._checkManualEntering.bind(this));
             }
         },
 
@@ -28,6 +26,10 @@ ckan.module("dga-jurisdiction-autofill", function ($) {
                 const dict = await org_dict;
                 this.el.val(dict['jurisdiction']);
             }
+        },
+
+        _checkManualEntering: function (e) {
+            this.jurisdiction_entered_manually = true;
         },
     };
 });
