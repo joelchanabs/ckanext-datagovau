@@ -24,8 +24,13 @@ def spatial_ingestor():
     ],
 )
 @click.help_option("-h", "--help")
+@click.option(
+    "--skip-errors",
+    is_flag=True,
+    help="Do not interrupt ingestion even after an error",
+)
 @click.pass_context
-def perform_ingest(ctx: click.Context, scope: str, force: bool, organization: tuple[str]):
+def perform_ingest(ctx: click.Context, scope: str, force: bool, organization: tuple[str], skip_errors: bool):
     """
     Performs ingest of spatial data for scope of data, where scope is one of: 'all', 'updated', 'updated-orgs', or <dataset-id>.
     """
@@ -42,7 +47,14 @@ def perform_ingest(ctx: click.Context, scope: str, force: bool, organization: tu
     with click.progressbar(query) as bar:
         with ctx.meta["flask_app"].test_request_context():
             for pkg in bar:
-                do_ingesting(pkg.id, force)
+                try:
+                    do_ingesting(pkg.id, force)
+                except Exception as e:
+                    # TODO: be more specific about possible errors
+                    if skip_errors:
+                        tk.error_shout(f"Error during {pkg.id} ingestion: {e}")
+                    else:
+                        raise
 
 
 @spatial_ingestor.command("purge")
