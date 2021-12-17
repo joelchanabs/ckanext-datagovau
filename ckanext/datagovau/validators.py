@@ -1,4 +1,8 @@
 import logging
+import json
+import geomet
+
+import ckan.plugins.toolkit as tk
 
 from ckanext.toolbelt.decorators import Collector
 from ckanext.agls.utils import details_for_gaz_id
@@ -9,6 +13,7 @@ validator, get_validators = Collector("dga").split()
 
 @validator
 def spatial_from_coverage(key, data, errors, context):
+    details = []
     coverage = data[("spatial_coverage",)]
     if not coverage:
         return
@@ -17,7 +22,18 @@ def spatial_from_coverage(key, data, errors, context):
         details = details_for_gaz_id(id_)
     except KeyError as e:
         log.warning("Cannot get details for GazId %s: %s", id_, e)
-        return None
+
+    valid_geojson = True
+    try:
+        coverage_json = json.loads(coverage)
+        geomet.wkt.dumps(coverage_json)
+    except (ValueError, geomet.InvalidGeoJSONException) as e:
+        valid_geojson = False
+        log.warning("Entered coverageerage is not a valid geojson")
 
     if details:
         data[key] = details["geojson"]
+    elif valid_geojson:
+        data[key] = coverage
+    else:
+        errors[("spatial_coverage",)].append(tk._("Entered value cannot be converted into a spatial object"))
