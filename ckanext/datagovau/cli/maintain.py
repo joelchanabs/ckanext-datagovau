@@ -89,13 +89,13 @@ def force_purge_orgs(purge_related_pkgs):
     )
 
     for org_id in deleted_org_ids:
-        related_pkgs = model.Session.query(model.Package).filter(model.Package.owner_org == org_id).all() or []
+        related_pkgs = model.Session.query(model.Package).filter(model.Package.owner_org == org_id).all()
         for related_pkg in related_pkgs:
             if related_pkg.state == "deleted" or related_pkg.private == True or purge_related_pkgs:
                 tk.get_action("dataset_purge")({"ignore_auth": True}, {"id": related_pkg.id})
             else:
                 print(related_pkg.name)
-        if not related_pkg or purge_related_pkgs:
+        if not related_pkgs or purge_related_pkgs:
             tk.get_action("organization_purge")({"ignore_auth": True}, {"id": org_id})
 
 
