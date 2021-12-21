@@ -89,7 +89,7 @@ def force_purge_orgs(purge_related_pkgs):
     )
 
     for org_id in deleted_org_ids:
-        related_pkgs = model.Session.query(model.Package).filter(model.Package.owner_org == org_id).all()
+        related_pkgs = model.Session.query(model.Package).filter(model.Package.owner_org == org_id).all() or []
         for related_pkg in related_pkgs:
             if related_pkg.state == "deleted" or related_pkg.private == True or purge_related_pkgs:
                 tk.get_action("dataset_purge")({"ignore_auth": True}, {"id": related_pkg.id})
