@@ -75,7 +75,7 @@ def zip_extract(
 
 @maintain.command()
 @click.help_option("-h", "--help")
-def force_purge_orgs(purge_related_pkgs):
+def force_purge_orgs():
     """Force purge of trashed organizations. If the organization has child packages, they become unowned"""
     sql_commands = [
         "delete from group_extra_revision where group_id in (select id from \"group\" where \"state\"='deleted' AND is_organization='t');",
@@ -84,7 +84,7 @@ def force_purge_orgs(purge_related_pkgs):
         "delete from group where group_id in (select id from \"group\" where \"state\"='deleted' AND is_organization='t');",
     ]
 
-    _execute_sql_delete_commands(commands)
+    _execute_sql_delete_commands(sql_commands)
 
 
 @maintain.command()
@@ -101,15 +101,14 @@ def force_purge_pkgs():
         "delete from package where \"state\"='deleted';"
     ]
 
-    _execute_sql_delete_commands(commands)
+    _execute_sql_delete_commands(sql_commands)
 
 
 def _execute_sql_delete_commands(commands):
-    for command in sql_commands:
+    for command in commands:
         try:
             model.Session.execute(command)
             model.Session.commit()
         except ProgrammingError as e:
-            print(e)
             log.warning(f"Could not execute command \"{command}\". Table does not exist.")
             model.Session.rollback()
