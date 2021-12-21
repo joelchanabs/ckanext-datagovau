@@ -81,7 +81,7 @@ def force_purge_orgs():
         "delete from group_extra_revision where group_id in (select id from \"group\" where \"state\"='deleted' AND is_organization='t');",
         "delete from group_extra where group_id in (select id from \"group\" where \"state\"='deleted' AND is_organization='t');",
         "delete from member where group_id in (select id from \"group\" where \"state\"='deleted' AND is_organization='t');",
-        "delete from \"group\" where \"state\"='deleted' AND is_organization='t');",
+        "delete from \"group\" where \"state\"='deleted' AND is_organization='t';",
     ]
 
     _execute_sql_delete_commands(sql_commands)
