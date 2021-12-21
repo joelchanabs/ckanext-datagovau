@@ -35,5 +35,9 @@ def spatial_from_coverage(key, data, errors, context):
         data[key] = details["geojson"]
     elif valid_geojson:
         data[key] = coverage
+    elif data.get(("id",)):
+        data_dict = tk.get_action("package_show")({}, {"id": data[("id",)]})
+        data[("spatial_coverage",)] = data_dict.get("spatial_coverage")
+        data[key] = data_dict.get("spatial")
     else:
         errors[("spatial_coverage",)].append(tk._("Entered value cannot be converted into a spatial object"))
