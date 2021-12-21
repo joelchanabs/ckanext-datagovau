@@ -5,6 +5,7 @@ import ckan.model as model
 import ckan.plugins.toolkit as tk
 
 from typing import Iterable, Optional
+from sqlalchemy.exc import ProgrammingError
 
 import click
 import ckanapi
@@ -73,36 +74,42 @@ def zip_extract(
 
 
 @maintain.command()
-@click.option(
-    "--purge-related-pkgs",
-    "purge_related_pkgs",
-    is_flag=True,
-    default=False,
-    help="Removes public packages related to organization (if exist). If False just prints names of those packages.",
-)
 @click.help_option("-h", "--help")
 def force_purge_orgs(purge_related_pkgs):
+    """Force purge of trashed organizations. If the organization has child packages, they become unowned"""
+    sql_commands = [
+        "delete from group_extra_revision where group_id in (select id from \"group\" where \"state\"='deleted' AND is_organization='t');",
+        "delete from group_extra where group_id in (select id from \"group\" where \"state\"='deleted' AND is_organization='t');",
+        "delete from member where group_id in (select id from \"group\" where \"state\"='deleted' AND is_organization='t');",
+        "delete from group where group_id in (select id from \"group\" where \"state\"='deleted' AND is_organization='t');",
+    ]
+
+    _execute_sql_delete_commands(commands)
+
+
+@maintain.command()
+def force_purge_pkgs():
     """Force purge of trashed organizations"""
-    deleted_org_ids = (
-        d.id for d in model.Session.query(model.Group)
-        if d.state == 'deleted'
-    )
+    sql_commands = [
+        "delete from package_extra pe where pe.package_id in (select id from package where name='stevetest');",
+        "delete from package where name='stevetest';",
+        "delete from related_dataset where dataset_id in (select id from package where \"state\"='deleted');",
+        "delete from harvest_object_extra where harvest_object_id in (select id from harvest_object where package_id in (select id from package where \"state\"='deleted'));",
+        "delete from harvest_object where package_id in (select id from package where \"state\"='deleted');",
+        "delete from harvest_object where package_id in (select id from package where \"state\"='deleted');",
+        "delete from package_extra where package_id in (select id from package where \"state\"='deleted');",
+        "delete from package where \"state\"='deleted';"
+    ]
 
-    for org_id in deleted_org_ids:
-        related_pkgs = model.Session.query(model.Package).filter(model.Package.owner_org == org_id).all()
-        for related_pkg in related_pkgs:
-            if related_pkg.state == "deleted" or related_pkg.private == True or purge_related_pkgs:
-                tk.get_action("dataset_purge")({"ignore_auth": True}, {"id": related_pkg.id})
-            else:
-                print(related_pkg.name)
-        if not related_pkgs or purge_related_pkgs:
-            tk.get_action("organization_purge")({"ignore_auth": True}, {"id": org_id})
+    _execute_sql_delete_commands(commands)
 
 
-# @maintain.command()
-# def force_purge_pkgs():
-#     """Force purge of trashed organizations"""
-#     deleted_pkg_ids = (
-#             d.id for d in model.Session.query(model.Package)
-#                 if d.state=='deleted'
-#     )
+def _execute_sql_delete_commands(commands):
+    for command in sql_commands:
+        try:
+            model.Session.execute(command)
+            model.Session.commit()
+        except ProgrammingError as e:
+            print(e)
+            log.warning(f"Could not execute command \"{command}\". Table does not exist.")
+            model.Session.rollback()
