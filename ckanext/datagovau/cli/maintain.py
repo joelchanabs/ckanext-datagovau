@@ -4,6 +4,7 @@ import logging
 import json
 from functools import partial
 from time import time
+from tempfile import mkstemp
 
 import ckan.model as model
 
@@ -12,10 +13,11 @@ from email.utils import formatdate
 
 from typing import BinaryIO, Iterable, Optional, Sequence, TextIO
 from sqlalchemy.exc import ProgrammingError
+from werkzeug.datastructures import FileStorage
 
 import click
 import ckanapi
-
+import ckan.plugins.toolkit as tk
 from ..utils import temp_dir
 
 log = logging.getLogger(__name__)
@@ -287,3 +289,28 @@ def bioregional_ingest(
         log.close()
         b.send_bioregional_log(log, sender, receiver)
         click.secho(f"Successfully sent email to {receiver}", fg="green")
+
+
+@maintain.command()
+@click.help_option("-h", "--help")
+@click.option("--tmp-dir", help="Storage for temporal files.")
+@click.pass_context
+def energy_rating_ingestor(ctx: click.Context, tmp_dir: Optional[str]):
+    """Update energy-rating resources."""
+    from . import _energy_rating as e
+
+    user = tk.get_action("get_site_user")({"ignore_auth": True}, {})
+
+    for resource, cid in e.energy_resources():
+        log.info("Processing %s", resource["id"])
+        filepath = mkstemp(dir=tmp_dir)[1]
+        filename = e.fetch(cid, filepath)
+
+        resource["name"] = resource["name"].split("-")[0] + " - " + filename
+
+        with open(filepath, "rb") as stream:
+            resource["upload"] = FileStorage(stream, filename, filename)
+            with ctx.meta["flask_app"].test_request_context():
+                resource = tk.get_action("resource_update")(
+                    {"user": user["name"]}, resource
+                )

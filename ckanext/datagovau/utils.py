@@ -21,13 +21,15 @@ def temp_dir(suffix: str, dir: str):
         shutil.rmtree(path)
 
 
-def download(url: str, name: str):
-    req = requests.get(url, stream=True)
+def download(url: str, name: str, **kwargs) -> requests.Response:
+    kwargs.setdefault("stream", True)
+    req = requests.get(url, **kwargs)
     with open(name, "wb") as dest:
         for chunk in req.iter_content(1024 * 1024):
             dest.write(chunk)
 
     log.debug("Downloaded %s from %s", name, url)
+    return req
 
 
 def contains(value: Container[T], parts: Iterable[T]) -> bool:
