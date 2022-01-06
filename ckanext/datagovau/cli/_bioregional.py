@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import click
 import smtplib
 import tempfile
 import os
@@ -85,20 +86,9 @@ class File:
 
     def prepare_uploader(
         self,
-        key: Optional[str],
-        secret: Optional[str],
-        region: Optional[str],
-        profile: Optional[str],
-        bucket: str,
     ):
-        boto3.setup_default_session(
-            aws_access_key_id=key,
-            aws_secret_access_key=secret,
-            region_name=region,
-            profile_name=profile,
-        )
         return Upload(
-            bucket, os.path.join(self.core_name, self.dataset["id"] + ".zip")
+            os.path.join(self.core_name, self.dataset["id"] + ".zip")
         )
 
 
@@ -111,6 +101,23 @@ class Fail:
 
 
 class Upload:
+    @classmethod
+    def setup(
+        cls,
+        key: Optional[str],
+        secret: Optional[str],
+        region: Optional[str],
+        profile: Optional[str],
+        bucket: str,
+    ):
+        boto3.setup_default_session(
+            aws_access_key_id=key,
+            aws_secret_access_key=secret,
+            region_name=region,
+            profile_name=profile,
+        )
+        cls.bucket = bucket
+
     @property
     def obj(self):
         if not hasattr(self, "_obj"):
@@ -120,8 +127,7 @@ class Upload:
                 self._obj = None
         return self._obj
 
-    def __init__(self, bucket: str, filename: str):
-        self.bucket = bucket
+    def __init__(self, filename: str):
         name = "bioregionalassessments/" + filename.replace("./", "")
         self.key = boto3.resource("s3").Object(self.bucket, name)
 
@@ -181,18 +187,19 @@ def _get_smtp_connection():
 
     # If 'smtp.user' is in CKAN config, try to login to SMTP server.
     if smtp_user:
-        assert smtp_password, (
-            "If smtp.user is configured then "
-            "smtp.password must be configured as well."
-        )
         smtp_connection.login(smtp_user, smtp_password)
 
     return smtp_connection
 
 
-def converted_datasets(datasets: Iterable[dict[str, Any]]):
+def converted_datasets(
+    datasets: Iterable[dict[str, Any]],
+    storage: str,
+    skip_local: bool,
+    no_download: bool,
+):
     for dataset in datasets:
-        yield {
+        data = {
             "id": dataset["@id"].split("/")[-1],
             "data_path": dataset[
                 "http://data.bioregionalassessments.gov.au/def/ba#ba_dataPath"
@@ -204,6 +211,19 @@ def converted_datasets(datasets: Iterable[dict[str, Any]]):
                 "@value"
             ],
         }
+        src = File(data, storage)
+        if src and skip_local:
+            continue
+        if not src and no_download:
+            continue
+        yield src
+
+
+def download_record(
+    record: File, no_verify: bool, timeout: Optional[int], url: str
+):
+    dataset_url = url.rstrip("/") + "/" + record.dataset["id"]
+    return record.download_from(dataset_url, no_verify, timeout)
 
 
 def prepare_source(
@@ -228,7 +248,9 @@ def prepare_source(
     if not resp.ok:
         raise ValueError(f"{resp.status_code} {resp.reason} {resp.url}")
 
-    with tempfile.NamedTemporaryFile("wb", delete=False, prefix="ba-", suffix=".json") as dest:
+    with tempfile.NamedTemporaryFile(
+        "wb", delete=False, prefix="ba-", suffix=".json"
+    ) as dest:
         for chunk in resp.iter_content(1024):
             dest.write(chunk)
 

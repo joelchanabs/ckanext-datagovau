@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 import json
-from time import time
 from functools import partial
+from time import time
 
 import ckan.model as model
 
@@ -153,9 +153,7 @@ def _execute_sql_delete_commands(commands):
     "profile",
     help="Predefined AWS Profile(use it instead of Key/Secret pair)",
 )
-@click.option(
-    "--aws-region", "region", help="AWS region"
-)
+@click.option("--aws-region", "region", help="AWS region")
 @click.option(
     "--s3-bucket",
     "bucket",
@@ -180,6 +178,21 @@ def _execute_sql_delete_commands(commands):
     type=int,
     help="Timeout for requests to bioregional source",
 )
+@click.option(
+    "--skip-local",
+    is_flag=True,
+    help="Skip datasets that are already downloaded",
+)
+@click.option(
+    "--no-download",
+    is_flag=True,
+    help="Do not download datasets, process only existing files",
+)
+@click.option(
+    "--no-upload",
+    is_flag=True,
+    help="Do not upload datasets to S3",
+)
 def bioregional_ingest(
     storage: str,
     log: Optional[TextIO],
@@ -194,8 +207,13 @@ def bioregional_ingest(
     url: str,
     no_verify: bool,
     timeout: Optional[int],
+    skip_local: bool,
+    no_download: bool,
+    no_upload: bool,
 ):
+    """Upload Bioregional Assesments to S3 bucket,"""
     from . import _bioregional as b
+
     echo = partial(click.echo, file=log)
 
     echo(f"S3 Bioregional S3 ingest starting at {formatdate(localtime=True)}")
@@ -212,52 +230,57 @@ def bioregional_ingest(
     except ValueError as e:
         echo(f"Cannot parse source as JSON: {e}")
         raise click.Abort()
+    b.Upload.setup(key, secret, region, profile, bucket)
 
-    for dataset in b.converted_datasets(datasets):
+    for record in b.converted_datasets(
+        datasets, storage, skip_local, no_download
+    ):
         echo("-" * 80)
-        echo(f"Ingesting dataset {dataset['id']}:")
-        src = b.File(dataset, storage)
-        if src:
-            echo(f"\t{src} exists on filesystem")
+        echo(f"Ingesting dataset {record.dataset['id']}:")
+        if record:
+            echo(f"\t{record} exists on filesystem")
         else:
-            dataset_url = url.rstrip("/") + "/" + dataset["id"]
-            echo(f"\tDownload data from URL {dataset_url}")
-            download = src.download_from(dataset_url, no_verify, timeout)
-
+            download = b.download_record(record, no_verify, timeout, url)
             if not download or not isinstance(download, b.Download):
-                echo(f"\tCannot download {dataset['id']}: {download.reason()}")
+                echo(
+                    f"\tCannot download {record.dataset['id']}:"
+                    f" {download.reason()}"
+                )
                 continue
 
+            echo(f"\tDownload data from URL {download.response.url}")
             size = len(download)
 
             echo(
                 "\tDownloading"
-                f" {dataset['folder_name']} {size} bytes"
+                f" {record.dataset['folder_name']} {size} bytes"
                 f" ({size // 1024 ** 2}MB)"
             )
-
             start = time()
-            with click.progressbar(download.start(src), length=size) as bar:
+            with click.progressbar(download.start(record), length=size) as bar:
                 for step in bar:
                     bar.update(step)
             echo(f"\tDownloaded in {time() - start}")
 
-        upload = src.prepare_uploader(key, secret, region, profile, bucket)
+        if no_upload:
+            continue
+
+        upload = record.prepare_uploader()
         echo(f"\tCheck the presence of {upload.key.key} on S3")
         if upload:
             echo(f"\t{upload.key.key} exists on S3. Compare")
-            if len(src) != len(upload):
+            if len(record) != len(upload):
                 echo(
                     f"\tFilesizes differ: remote - {len(upload)} |"
-                    f" local - {len(src)}"
+                    f" local - {len(record)}"
                 )
-                upload.start(src)
+                upload.start(record)
                 echo(f"\t{upload.key.key} uploaded to S3")
             else:
                 echo("\tFilesize is the same. Skip")
         else:
             echo(f"\tObject does not exist. Upload")
-            upload.start(src)
+            upload.start(record)
             echo(f"\t{upload.key.key} uploaded to S3")
 
     if log and sender and receiver:
