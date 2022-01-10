@@ -1,5 +1,6 @@
 import logging
 import json
+import datetime
 import geomet
 
 import ckan.plugins.toolkit as tk
@@ -41,3 +42,11 @@ def spatial_from_coverage(key, data, errors, context):
         data[key] = data_dict.get("spatial")
     else:
         errors[("spatial_coverage",)].append(tk._("Entered value cannot be converted into a spatial object"))
+
+
+@validator
+def default_now(value):
+    if value:
+        return value
+
+    return datetime.datetime.now().isoformat()
