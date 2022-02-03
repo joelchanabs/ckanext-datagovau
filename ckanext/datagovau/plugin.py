@@ -27,6 +27,9 @@ ingest_rest_list = [
 geo_pub_url = tk.config.get(
             "ckanext.datagovau.spatialingestor.geoserver.public_url")
 
+ignore_ingestor_workflow = tk.config.get(
+            "ckanext.datagovau.spatialingestor.ignore_workflow", False)
+
 
 _original_xnotify = xloaderPlugin.notify
 def _dga_xnotify(self, resource):
@@ -98,50 +101,52 @@ class DataGovAuPlugin(p.SingletonPlugin):
 
     def after_delete(self, context, pkg_dict):
         if pkg_dict.get('id'):
-            try:
-                jobs.enqueue(delete_ingested,
-                        kwargs={'pkg_id': pkg_dict['id']},
-                        rq_kwargs={'timeout': 1000})
-            except Exception as e:
-                h.flash_error(f"{e}")
+            if not tk.asbool(ignore_ingestor_workflow):
+                try:
+                    jobs.enqueue(delete_ingested,
+                            kwargs={'pkg_id': pkg_dict['id']},
+                            rq_kwargs={'timeout': 1000})
+                except Exception as e:
+                    h.flash_error(f"{e}")
 
     #IDomainObjectModification
     
     def notify(self, entity, operation):
-        if operation == 'changed' and isinstance(entity, model.Package):
-            if entity.state == 'active':
-                ingest_resources = [
-                    res for res in entity.resources
-                    if res.format.lower() in ingest_rest_list
-                ]
-                geoserver_resources = [
-                    res for res in entity.resources
-                    if geo_pub_url in res.url
-                ]
+        if not tk.asbool(ignore_ingestor_workflow):
+            if operation == 'changed' and isinstance(entity, model.Package):
+                if entity.state == 'active':
+                    ingest_resources = [
+                        res for res in entity.resources
+                        if res.format.lower() in ingest_rest_list
+                    ]
+                    geoserver_resources = [
+                        res for res in entity.resources
+                        if geo_pub_url in res.url
+                    ]
 
-                if ingest_resources:
-                    ingest_res = ingest_resources[0]
-                    send = False
-                    
-                    if not geoserver_resources:
-                        send = True
-                    else:
-                        if [r for r in geoserver_resources if r.last_modified == ingest_res.last_modified]:
-                            send = False
+                    if ingest_resources:
+                        ingest_res = ingest_resources[0]
+                        send = False
+                        
+                        if not geoserver_resources:
+                            send = True
                         else:
-                            geo_res = geoserver_resources[0] 
-                            if ingest_res.last_modified > geo_res.last_modified:
-                                send = True
+                            if [r for r in geoserver_resources if r.last_modified == ingest_res.last_modified]:
+                                send = False
+                            else:
+                                geo_res = geoserver_resources[0] 
+                                if ingest_res.last_modified > geo_res.last_modified:
+                                    send = True
 
-                    if send:
-                        try:
-                            jobs.enqueue(run_ingestor,
-                                    kwargs={'pkg_id': entity.id},
-                                    rq_kwargs={'timeout': 1000})
-                            h.flash_success(
-                                f"Send {entity.id} for ingesting.")
-                        except Exception as e:
-                            h.flash_error(f"{e}")
+                        if send:
+                            try:
+                                jobs.enqueue(run_ingestor,
+                                        kwargs={'pkg_id': entity.id},
+                                        rq_kwargs={'timeout': 1000})
+                                h.flash_success(
+                                    f"Send {entity.id} for ingesting.")
+                            except Exception as e:
+                                h.flash_error(f"{e}")
 
 
 _stat_fq = {
