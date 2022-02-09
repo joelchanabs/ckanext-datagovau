@@ -40,7 +40,7 @@ def rmv_old_geo_res():
     length = len(geo_resources.all())
     log.debug(f"Found {length} resources...")
     for res in geo_resources:
-        log.debug(f"Removing {res.id} resource.")
+        log.debug(f"Removing {res.id} resource for {res.package_id} dataset.")
         tk.get_action("resource_delete")(
             {"user": tk.config.get(
                 "ckanext.datagovau.spatialingestor.username", ''),

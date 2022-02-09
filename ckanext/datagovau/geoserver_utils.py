@@ -24,6 +24,10 @@ CONFIG_PUBLIC_URL = tk.config.get(
             "ckanext.datagovau.spatialingestor.geoserver.public_url")
 CONFIG_TIMEOUT = "ckanext.datagovau.spatialingestor.request_timeout"
 
+IGNORE_DATASETS = tk.config.get(
+    "ckanext.datagovau.spatialingestor.pkg_blacklist", []
+).split(" ")
+
 DEFAULT_TIMEOUT = 10
 
 def _timeout():
@@ -323,12 +327,12 @@ class Geoserverobj():
         using_grid = False
         native_crs = 'EPSG:4326'
         self.native_crs = native_crs
-        if len(self.filtered_resources['kml']):
-            using_kml = True
-        elif len(self.filtered_resources['tiff']):
-            using_grid = True
-        elif len(self.filtered_resources['grid']):
-            using_grid = True
+        # if len(self.filtered_resources['kml']):
+        #     using_kml = True
+        # elif len(self.filtered_resources['tiff']):
+        #     using_grid = True
+        # elif len(self.filtered_resources['grid']):
+        #     using_grid = True
 
         return using_grid
 
@@ -590,76 +594,78 @@ def _get_cursor():
 
 
 def run_ingestor(pkg_id):
-    log.debug("*" * 100)
-    log.info(f"Send {pkg_id} to ingest")
-    dataset_dict = tk.get_action(
-        'package_show')({}, {'id': pkg_id})
-    table_name = "ckan_" + dataset_dict["id"].replace("-", "_")
-    log.info('Initializing Geoserver object')
-    geo_obj = Geoserverobj()
+    if not pkg_id in IGNORE_DATASETS:
+        print(pkg_id)
+        log.debug("*" * 100)
+        log.info(f"Send {pkg_id} to ingest")
+        dataset_dict = tk.get_action(
+            'package_show')({}, {'id': pkg_id})
+        table_name = "ckan_" + dataset_dict["id"].replace("-", "_")
+        log.info('Initializing Geoserver object')
+        geo_obj = Geoserverobj()
 
-    log.info('Prepare filtered resources')
-    res_group_exist = geo_obj.get_geo_res_list(dataset_dict)
-    if res_group_exist:
-        log.info(
-            'Clear all exisitng Data in DB before start the process')
-        geo_obj._clear_old_table(dataset_dict, table_name)
-
-        log.info('Checking Workspace for existence.')
-        workspace = geo_obj.into_workspace(dataset_dict["name"])
-
-        if geo_obj.check_workspace(workspace):
-            log.info('Dropping existing Workspace')
-            geo_obj.drop_workspace(workspace)
-
-        log.info('Creating new workspace for the Dataset')
-        r = geo_obj.create_workspace(workspace)
-
-        using_grid = geo_obj._convert_resources()
-        
-        
-        datastore = workspace + ("cs" if using_grid else "ds")
-
-        try:
-            log.info('Creating new Datastore for the Dataset')         
-            geo_obj.create_store(
-                datastore, workspace, table_name if using_grid else None
-            )
-        except Exception as e:
-            print(e)
-            log.error("{}: {}".format(type(e), e))
-            return
-
-
-        log.debug('Check if ingest resource exists')
-        ## IMPORTS
+        log.info('Prepare filtered resources')
+        res_group_exist = geo_obj.get_geo_res_list(dataset_dict)
         if res_group_exist:
-            # log.debug("Removing existing Geoserver resources")
-            # geo_obj._delete_resources(dataset_dict)
-            
-            log.debug('Send first resource to Import')
-            is_ingested = geo_obj.ingest_resource()
-            
-            if is_ingested:
-                log.debug('Run Dataset import.')
-                geo_obj.run_imports()
+            log.info(
+                'Clear all exisitng Data in DB before start the process')
+            geo_obj._clear_old_table(dataset_dict, table_name)
 
-                existing_formats = []
-                for resource in dataset_dict["resources"]:
-                    existing_formats.append(resource["format"].lower())
+            log.info('Checking Workspace for existence.')
+            workspace = geo_obj.into_workspace(dataset_dict["name"])
 
-                log.debug("Creating new resources for Dataset")
-                geo_obj._create_resources_from_formats(
-                    workspace,
-                    table_name,
-                    existing_formats,
-                    pkg_id,
-                    using_grid)
-            else:
-                log.error((f"Datset {dataset_dict['name']} \
-                    wasn't ingested during ingest process. Skipping..."))
-    else:
-        log.debug("No ingest resource for this Dataset")
+            if geo_obj.check_workspace(workspace):
+                log.info('Dropping existing Workspace')
+                geo_obj.drop_workspace(workspace)
+
+            log.info('Creating new workspace for the Dataset')
+            r = geo_obj.create_workspace(workspace)
+
+            using_grid = geo_obj._convert_resources()
+            
+            
+            datastore = workspace + ("cs" if using_grid else "ds")
+
+            try:
+                log.info('Creating new Datastore for the Dataset')         
+                geo_obj.create_store(
+                    datastore, workspace, table_name if using_grid else None
+                )
+            except Exception as e:
+                print(e)
+                log.error("{}: {}".format(type(e), e))
+                return
+
+
+            log.debug('Check if ingest resource exists')
+            ## IMPORTS
+            if res_group_exist:
+                # log.debug("Removing existing Geoserver resources")
+                # geo_obj._delete_resources(dataset_dict)
+                
+                log.debug('Send first resource to Import')
+                is_ingested = geo_obj.ingest_resource()
+                
+                if is_ingested:
+                    log.debug('Run Dataset import.')
+                    geo_obj.run_imports()
+
+                    existing_formats = []
+                    for resource in dataset_dict["resources"]:
+                        existing_formats.append(resource["format"].lower())
+
+                    log.debug("Creating new resources for Dataset")
+                    geo_obj._create_resources_from_formats(
+                        workspace,
+                        table_name,
+                        existing_formats,
+                        pkg_id,
+                        using_grid)
+                else:
+                    log.error((f"Datset {dataset_dict['name']} \
+                        wasn't ingested during ingest process. Skipping..."))
+        else:
+            log.debug("No ingest resource for this Dataset")
 
 
 def delete_ingested(pkg_id):
