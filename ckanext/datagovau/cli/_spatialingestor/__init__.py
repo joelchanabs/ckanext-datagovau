@@ -368,22 +368,22 @@ def _create_resources_from_formats(
                 },
             )
         elif _format == "kml" and _format not in existing_formats:
-                log.debug("Creating KML Resource")
-                call_action(
-                    "resource_create",
-                    {
-                        "package_id": dataset["id"],
-                        "name": dataset["title"] + " KML",
-                        "description": (
-                            "View a map of this dataset in web "
-                            "and desktop spatial data tools"
-                            " including Google Earth"
-                        ),
-                        "format": _format,
-                        "url": url,
-                        "last_modified": datetime.now().isoformat(),
-                    },
-                )
+            log.debug("Creating KML Resource")
+            call_action(
+                "resource_create",
+                {
+                    "package_id": dataset["id"],
+                    "name": dataset["title"] + " KML",
+                    "description": (
+                        "View a map of this dataset in web "
+                        "and desktop spatial data tools"
+                        " including Google Earth"
+                    ),
+                    "format": _format,
+                    "url": url,
+                    "last_modified": datetime.now().isoformat(),
+                },
+            )
         elif _format in ["wms", "wfs"] and _format not in existing_formats:
             if _format == "wms":
                 log.debug("Creating WMS API Endpoint Resource")
@@ -449,9 +449,7 @@ def _create_resources_from_formats(
 def _delete_resources(dataset):
     server = get_geoserver()
     geoserver_resources = [
-        res
-        for res in dataset["resources"]
-        if server.public_url in res["url"]
+        res for res in dataset["resources"] if server.public_url in res["url"]
     ]
 
     for res in geoserver_resources:

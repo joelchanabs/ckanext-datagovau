@@ -30,7 +30,13 @@ def spatial_ingestor():
     help="Do not interrupt ingestion even after an error",
 )
 @click.pass_context
-def perform_ingest(ctx: click.Context, scope: str, force: bool, organization: tuple[str], skip_errors: bool):
+def perform_ingest(
+    ctx: click.Context,
+    scope: str,
+    force: bool,
+    organization: tuple[str],
+    skip_errors: bool,
+):
     """
     Performs ingest of spatial data for scope of data, where scope is one of: 'all', 'updated', 'updated-orgs', or <dataset-id>.
     """
