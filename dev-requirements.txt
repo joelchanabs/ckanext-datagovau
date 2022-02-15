@@ -1,2 +1,5 @@
 pytest-ckan
 pytest-factoryboy
+pre-commit
+black
+flake8
