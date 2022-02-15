@@ -2,7 +2,6 @@
 line-length = 79
 experimental-string-processing = true
 
-
 [tool.pyright]
 pythonVersion = "3.8"
 include = ["ckanext/datagovau"]

@@ -10,25 +10,18 @@ from urllib.parse import quote
 
 from typing import (
     Any,
-    NamedTuple,
     Optional,
-    Dict,
-    List,
 )
 
 from ckanext.datagovau import utils
 
 log = logging.getLogger(__name__)
 
-CONFIG_PUBLIC_URL = tk.config.get(
-    "ckanext.datagovau.spatialingestor.geoserver.public_url"
-)
+CONFIG_PUBLIC_URL = "ckanext.datagovau.spatialingestor.geoserver.public_url"
 CONFIG_TIMEOUT = "ckanext.datagovau.spatialingestor.request_timeout"
+CONFIG_IGNORE = "ckanext.datagovau.spatialingestor.pkg_blacklist"
 
-IGNORE_DATASETS = tk.config.get(
-    "ckanext.datagovau.spatialingestor.pkg_blacklist", []
-).split(" ")
-
+DEFAULT_IGNORE = []
 DEFAULT_TIMEOUT = 10
 
 
@@ -41,24 +34,15 @@ class Geoserverobj:
         self.filtered_resources = {
             "shp": [],
             "kml": [],
-            # "tab": [],
-            # "grid": [],
-            # "tiff": [],
-            # "sld": []
         }
         self.res_group_formats = {
             "shp": ["shp", "shapefile"],
             "kml": ["kml", "kmz"],
-            # "tab": [
-            #     "tab", "mapinfo"
-            # ],
-            # "grid": ["grid"],
-            # "tiff": ["geotif", "tiff"]
         }
         self.geoserver_url = tk.config.get(
             "ckanext.datagovau.spatialingestor.geoserver.url"
         )
-        self.geoserver_public_url = CONFIG_PUBLIC_URL
+        self.geoserver_public_url = tk.config.get(CONFIG_PUBLIC_URL)
         self.geoserver_workspace = "WORKSPACE"
 
         self.datastore = ""
@@ -112,124 +96,67 @@ class Geoserverobj:
         tasks = requests.get(self.geoserver_url + "/rest/imports")
         if tasks.status_code == 200:
             return tasks.json()
-        return None
 
     def ingest_resource(self):
-        if self.filtered_resources:
-            already_got_one = False
-            for res_group, rest_list in self.filtered_resources.items():
-                if rest_list and not already_got_one:
-                    for res in rest_list:
-                        if already_got_one:
-                            continue
-                        else:
-                            already_got_one = True
-                            log.info("Adding {0} to import.".format(res["id"]))
-                            url = res.get("url")
-                            self.main_res = res
-                            import_data = {
-                                "import": {
-                                    "targetWorkspace": {
-                                        "workspace": {"name": self.workspace}
-                                    },
-                                    "targetStore": {
-                                        "dataStore": {"name": self.datastore}
-                                    },
-                                    "data": {
-                                        "type": "remote",
-                                        "location": url,
-                                    },
-                                }
-                            }
+        if not self.filtered_resources:
+            return False
 
-                            res_import = requests.post(
-                                self.geoserver_url + "/rest/imports",
-                                data=json.dumps(import_data),
-                                headers={"Content-Type": "application/json"},
-                            )
-                            if res_import.ok:
-                                import_data = res_import.json()
-                                if import_data["import"].get("tasks"):
-                                    task = import_data["import"]["tasks"][0]
-                                    if task["state"] != "ERROR":
-                                        self.task_dict = task
-                                        data = {
-                                            "layer": {"name": self.table_name}
-                                        }
-                                        if (
-                                            task.get("state")
-                                            and task["state"] == "NO_CRS"
-                                        ):
-                                            data["layer"][
-                                                "srs"
-                                            ] = self.native_crs
+        groups = [g for g in self.filtered_resources.values() if g]
+        if not groups:
+            return False
+        res = groups[0][0]
 
-                                        # if task.get('state') and task['state'] == 'NO_FORMAT':
-                                        #     ## LETS CHECK WHAT FILE TYPE IT IS
-                                        #     format = self.get_file_format(task['href'])
-                                        #     if format.lower() == 'tab':
-                                        #         resp = self.get_task(task['href'])
-                                        #         if resp.ok:
-                                        #             task_obj = resp.json()
-                                        #             task_obj['task']['data']['format'] = 'Shapefile'
-                                        #             self.update_task(task['href'], task_obj)
-                                        upd_l = self.update_layer(
-                                            task["href"], data
-                                        )
-                                        if upd_l.ok:
-                                            log.info("Layer is being updated.")
-                                            return True
-                                        else:
-                                            log.error(
-                                                "Layer wasn't updated due to"
-                                                " some unexpected issues."
-                                            )
-                                            log.error(
-                                                "Status code is {0}".format(
-                                                    upd_l.status_code
-                                                )
-                                            )
+        log.info("Adding {0} to import.".format(res["id"]))
+        url = res.get("url")
+        self.main_res = res
+        import_data = {
+            "import": {
+                "targetWorkspace": {"workspace": {"name": self.workspace}},
+                "targetStore": {"dataStore": {"name": self.datastore}},
+                "data": {
+                    "type": "remote",
+                    "location": url,
+                },
+            }
+        }
 
-                                        # if import_data['import']['data']['format'] in ['GeoTIFF']:
-                                        #     # Try to update datastore
-                                        #     data_files = self.get_data(import_data['import']['data']['href'])
-                                        #     if data_files.ok:
-                                        #         content = data_files.json()
-                                        #         if content.get('files'):
-                                        #             for file in content['files']:
-                                        #                 filename = file['file']
-                                        #                 if filename.split('.')[-1] in 'tiff':
-                                        #                     data = {
-                                        #                         'coverageStore': {
-                                        #                             'url': 'file:' + content['location'].split('/data/')[-1] + '/' + filename
-                                        #                         }
-                                        #                     }
-                                        # self.update_datastore(
-                                        #     import_data['import']['targetWorkspace']['workspace']['name'],
-                                        #     import_data['import']['targetStore']['coverageStore']['name'],
-                                        #     'coveragestores',
-                                        #     data)
-                                        # self.upload_file_to_datastore(
-                                        #     import_data['import']['targetWorkspace']['workspace']['name'],
-                                        #     import_data['import']['targetStore']['coverageStore']['name'],
-                                        #     'coveragestores',
-                                        #     url,
-                                        #     filename,
-                                        #     'image/tiff',
-                                        #     '.imagemosaic')
-                                        # continue
-                                    else:
-                                        log.error(
-                                            "An error appeard during task,"
-                                            " skip."
-                                        )
-                            else:
-                                log.error(
-                                    "Something went wrong while sending"
-                                    " resource to import. Status code is {0}"
-                                    .format(res_import.status_code)
-                                )
-                                log.error(f"{res_import.content}")
+        res_import = requests.post(
+            self.geoserver_url + "/rest/imports",
+            data=json.dumps(import_data),
+            headers={"Content-Type": "application/json"},
+        )
+        if res_import.ok:
+            import_data = res_import.json()
+            if import_data["import"].get("tasks"):
+                task = import_data["import"]["tasks"][0]
+                if task["state"] != "ERROR":
+                    self.task_dict = task
+                    data = {"layer": {"name": self.table_name}}
+                    if task.get("state") and task["state"] == "NO_CRS":
+                        data["layer"]["srs"] = self.native_crs
+
+                    upd_l = self.update_layer(task["href"], data)
+                    if upd_l.ok:
+                        log.info("Layer is being updated.")
+                        return True
+                    else:
+                        log.error(
+                            "Layer wasn't updated due to"
+                            " some unexpected issues."
+                        )
+                        log.error(
+                            "Status code is {0}".format(upd_l.status_code)
+                        )
+                else:
+                    log.error("An error appeard during task, skip.")
+        else:
+            log.error(
+                "Something went wrong while sending"
+                " resource to import. Status code is {0}".format(
+                    res_import.status_code
+                )
+            )
+            log.error(f"{res_import.content}")
         return False
 
     def get_data(self, url):
@@ -342,16 +269,9 @@ class Geoserverobj:
         return session
 
     def _convert_resources(self):
-        using_kml = False
         using_grid = False
         native_crs = "EPSG:4326"
         self.native_crs = native_crs
-        # if len(self.filtered_resources['kml']):
-        #     using_kml = True
-        # elif len(self.filtered_resources['tiff']):
-        #     using_grid = True
-        # elif len(self.filtered_resources['grid']):
-        #     using_grid = True
 
         return using_grid
 
@@ -582,17 +502,6 @@ class Geoserverobj:
                             data,
                         )
 
-    # def _delete_layer(self, workspace, table_name):
-    #     url = (
-    #         self.geoserver_url
-    #         + '/rest/layers/'
-    #         + workspace + ':'
-    #         + table_name
-    #         + '.xml'
-    #     )
-    #     with self._session() as s:
-    #         resp = s.delete(url, json={}, timeout=_timeout())
-
 
 def call_action(action: str, data, ignore_auth=False) -> Any:
     return tk.get_action(action)(
@@ -623,100 +532,90 @@ def _get_cursor():
     return cur, conn
 
 
-def run_ingestor(pkg_id):
-    if not pkg_id in IGNORE_DATASETS:
-        print(pkg_id)
-        log.debug("*" * 100)
-        log.info(f"Send {pkg_id} to ingest")
-        dataset_dict = tk.get_action("package_show")({}, {"id": pkg_id})
-        table_name = "ckan_" + dataset_dict["id"].replace("-", "_")
-        log.info("Initializing Geoserver object")
-        geo_obj = Geoserverobj()
+def run_ingestor(pkg_id: str):
+    ignored = tk.aslist(tk.config.get(CONFIG_IGNORE, DEFAULT_IGNORE))
+    if pkg_id in ignored:
+        log.debug("%s is ignored")
+        return
 
-        log.info("Prepare filtered resources")
-        res_group_exist = geo_obj.get_geo_res_list(dataset_dict)
-        if res_group_exist:
-            log.info("Clear all exisitng Data in DB before start the process")
-            geo_obj._clear_old_table(dataset_dict, table_name)
+    log.info(f"Send {pkg_id} to ingest")
+    dataset_dict = tk.get_action("package_show")({}, {"id": pkg_id})
+    table_name = "ckan_" + dataset_dict["id"].replace("-", "_")
+    geo_obj = Geoserverobj()
 
-            log.info("Checking Workspace for existence.")
-            workspace = geo_obj.into_workspace(dataset_dict["name"])
+    log.debug("Prepare filtered resources")
+    res_group_exist = geo_obj.get_geo_res_list(dataset_dict)
+    if not res_group_exist:
+        log.info("No ingest resource for this Dataset")
+        return
 
-            if geo_obj.check_workspace(workspace):
-                log.info("Dropping existing Workspace")
-                geo_obj.drop_workspace(workspace)
+    log.debug("Clear all exisitng Data in DB before start the process")
+    geo_obj._clear_old_table(dataset_dict, table_name)
 
-            log.info("Creating new workspace for the Dataset")
-            r = geo_obj.create_workspace(workspace)
+    log.debug("Checking Workspace for existence.")
+    workspace = geo_obj.into_workspace(dataset_dict["name"])
 
-            using_grid = geo_obj._convert_resources()
+    if geo_obj.check_workspace(workspace):
+        log.debug("Dropping existing Workspace")
+        geo_obj.drop_workspace(workspace)
 
-            datastore = workspace + ("cs" if using_grid else "ds")
+    log.debug("Creating new workspace for the Dataset")
+    r = geo_obj.create_workspace(workspace)
 
-            try:
-                log.info("Creating new Datastore for the Dataset")
-                geo_obj.create_store(
-                    datastore, workspace, table_name if using_grid else None
-                )
-            except Exception as e:
-                print(e)
-                log.error("{}: {}".format(type(e), e))
-                return
+    using_grid = geo_obj._convert_resources()
 
-            log.debug("Check if ingest resource exists")
-            ## IMPORTS
-            if res_group_exist:
-                # log.debug("Removing existing Geoserver resources")
-                # geo_obj._delete_resources(dataset_dict)
+    datastore = workspace + ("cs" if using_grid else "ds")
 
-                log.debug("Send first resource to Import")
-                is_ingested = geo_obj.ingest_resource()
+    try:
+        log.debug("Creating new Datastore for the Dataset")
+        geo_obj.create_store(
+            datastore, workspace, table_name if using_grid else None
+        )
+    except Exception as e:
+        log.exception("Cannot create store for %s", pkg_id)
+        return
 
-                if is_ingested:
-                    log.debug("Run Dataset import.")
-                    geo_obj.run_imports()
+    log.debug("Check if ingest resource exists")
 
-                    existing_formats = []
-                    for resource in dataset_dict["resources"]:
-                        existing_formats.append(resource["format"].lower())
+    log.debug("Send first resource to Import")
 
-                    log.debug("Creating new resources for Dataset")
-                    geo_obj._create_resources_from_formats(
-                        workspace,
-                        table_name,
-                        existing_formats,
-                        pkg_id,
-                        using_grid,
-                    )
-                else:
-                    log.error(
-                        f"Datset {dataset_dict['name']}                       "
-                        "  wasn't ingested during ingest process. Skipping..."
-                    )
-        else:
-            log.debug("No ingest resource for this Dataset")
+    if not geo_obj.ingest_resource():
+        log.error(
+            "Datset %s  wasn't ingested during ingest process. Skipping...",
+            dataset_dict["name"],
+        )
+        return
+
+    log.debug("Run Dataset import.")
+    geo_obj.run_imports()
+
+    existing_formats = []
+    for resource in dataset_dict["resources"]:
+        existing_formats.append(resource["format"].lower())
+
+    log.debug("Creating new resources for Dataset")
+    geo_obj._create_resources_from_formats(
+        workspace,
+        table_name,
+        existing_formats,
+        pkg_id,
+        using_grid,
+    )
 
 
 def delete_ingested(pkg_id):
-    dataset_dict = tk.get_action("package_show")(
-        {
-            "user": tk.config.get(
-                "ckanext.datagovau.spatialingestor.username", ""
-            ),
-            "ignore_auth": False,
-        },
-        {"id": pkg_id},
-    )
+    dataset_dict = call_action("package_show", {"id": pkg_id})
+    if not dataset_dict:
+        return
 
-    if dataset_dict:
-        table_name = "ckan_" + dataset_dict["id"].replace("-", "_")
-        geo_obj = Geoserverobj()
-        geo_obj._delete_resources(dataset_dict)
+    table_name = "ckan_" + dataset_dict["id"].replace("-", "_")
+    geo_obj = Geoserverobj()
+    geo_obj._delete_resources(dataset_dict)
 
-        geo_obj._clear_old_table(dataset_dict, table_name)
+    geo_obj._clear_old_table(dataset_dict, table_name)
 
-        workspace = geo_obj.into_workspace(dataset_dict["name"])
+    workspace = geo_obj.into_workspace(dataset_dict["name"])
 
-        if geo_obj.check_workspace(workspace):
-            log.info("Dropping existing Workspace")
-            geo_obj.drop_workspace(workspace)
+    if geo_obj.check_workspace(workspace):
+        log.info("Dropping existing Workspace")
+        geo_obj.drop_workspace(workspace)

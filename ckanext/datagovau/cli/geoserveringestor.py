@@ -23,38 +23,33 @@ def geoserver_ingestor():
     default=False,
 )
 def geo_ingest(dataset, organization):
-    log.info("Start ingestor script")
-
-    log.info("Query Dataset based on script options")
     query = model.Session.query(model.Package).filter_by(state="active")
     if organization:
         query = query.filter(model.Package.owner_org == organization)
-    elif dataset:
+
+    if dataset:
         query = query.filter(
             (model.Package.name == dataset) | (model.Package.id == dataset)
         )
 
-    log.info("Jump into Dataset loop")
     for dataset in query:
         run_ingestor(dataset.id)
 
 
 # ONE TIME SCRIPT
+# TODO: remove it before the next release(when spatialingestore deployed)
 @geoserver_ingestor.command("rmv-old-geo-res")
 def rmv_old_geo_res():
-    geo_resources = model.Session.query(model.Resource).filter(
-        model.Resource.url.ilike(CONFIG_PUBLIC_URL + "%")
+    q = model.Session.query(model.Resource).filter(
+        model.Resource.url.ilike(tk.config[CONFIG_PUBLIC_URL] + "%"),
+        model.Resource.state != "deleted",
     )
-    length = len(geo_resources.all())
-    log.debug(f"Found {length} resources...")
-    for res in geo_resources:
-        log.debug(f"Removing {res.id} resource for {res.package_id} dataset.")
-        tk.get_action("resource_delete")(
-            {
-                "user": tk.config.get(
-                    "ckanext.datagovau.spatialingestor.username", ""
-                ),
-                "ignore_auth": True,
-            },
-            {"id": res.id},
-        )
+    user = tk.get_action("get_site_user")({"ignore_auth": True}, {})
+
+    with click.progressbar(q, length=q.count()) as bar:
+        for res in bar:
+            bar.label = f"Removing {res.id}"
+            tk.get_action("resource_delete")(
+                {"user": user["name"]},
+                {"id": res.id},
+            )

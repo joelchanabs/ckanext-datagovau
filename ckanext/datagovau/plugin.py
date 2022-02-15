@@ -14,21 +14,17 @@ import ckan.lib.jobs as jobs
 import ckan.lib.helpers as h
 
 from . import validators, cli
-from ckanext.datagovau.geoserver_utils import run_ingestor, delete_ingested
+from ckanext.datagovau.geoserver_utils import (
+    run_ingestor,
+    delete_ingested,
+    CONFIG_PUBLIC_URL,
+)
 
 
 ingest_rest_list = ["kml", "kmz", "shp", "shapefile"]
 
-geo_pub_url = tk.config.get(
-    "ckanext.datagovau.spatialingestor.geoserver.public_url"
-)
-
-ignore_ingestor_workflow = tk.config.get(
-    "ckanext.datagovau.spatialingestor.ignore_workflow", False
-)
-
-
-_original_xnotify = xloaderPlugin.notify
+CONFIG_IGNORE_WORKFLOW = "ckanext.datagovau.spatialingestor.ignore_workflow"
+DEFAULT_IGNORE_WORKFLOW = False
 
 
 def _dga_xnotify(self, resource):
@@ -39,6 +35,7 @@ def _dga_xnotify(self, resource):
         pass
 
 
+_original_xnotify = xloaderPlugin.notify
 xloaderPlugin.notify = _dga_xnotify
 
 
@@ -103,7 +100,9 @@ class DataGovAuPlugin(p.SingletonPlugin):
 
     def after_delete(self, context, pkg_dict):
         if pkg_dict.get("id"):
-            if not tk.asbool(ignore_ingestor_workflow):
+            if not tk.asbool(
+                tk.config.get(CONFIG_IGNORE_WORKFLOW, DEFAULT_IGNORE_WORKFLOW)
+            ):
                 try:
                     jobs.enqueue(
                         delete_ingested,
@@ -116,7 +115,9 @@ class DataGovAuPlugin(p.SingletonPlugin):
     # IDomainObjectModification
 
     def notify(self, entity, operation):
-        if not tk.asbool(ignore_ingestor_workflow):
+        if not tk.asbool(
+            tk.config.get(CONFIG_IGNORE_WORKFLOW, DEFAULT_IGNORE_WORKFLOW)
+        ):
             if operation == "changed" and isinstance(entity, model.Package):
                 if entity.state == "active":
                     ingest_resources = [
@@ -127,7 +128,7 @@ class DataGovAuPlugin(p.SingletonPlugin):
                     geoserver_resources = [
                         res
                         for res in entity.resources
-                        if geo_pub_url in res.url
+                        if tk.config[CONFIG_PUBLIC_URL] in res.url
                     ]
 
                     if ingest_resources:
