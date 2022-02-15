@@ -8,3 +8,22 @@ It comprises:
 * A cut down licenses.json file
 
 This extension is complemented by ckanext-agls for AGLS metadata, ckanext-googleanalytics for Google Analytics tracking of API usage and ckanext-dga-stats for the customised site statistics page.
+
+
+Development
+===========
+
+1. Instal dev-requirements::
+
+     pip install -r dev-requirements.txt
+
+2. Initialize git-hooks::
+
+     pre-commit install
+
+Testing
++++++++
+
+Run all the tests::
+
+  pytest ckanext/datagovau/tests
