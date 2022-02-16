@@ -9,23 +9,21 @@ It comprises:
 
 This extension is complemented by ckanext-agls for AGLS metadata, ckanext-googleanalytics for Google Analytics tracking of API usage and ckanext-dga-stats for the customised site statistics page.
 
-Installation
-============
 
-To install this package, from your CKAN virtualenv, run the following from your CKAN base folder (e.g. ``pyenv/``)::
+Development
+===========
 
-  pip install -e git+https://github.com/okfn/ckanext-datagovau#egg=ckanext-datagovau
+1. Instal dev-requirements::
 
-Then activate it by setting ``ckan.plugins = datagovau`` in your main ``ini``-file.
+     pip install -r dev-requirements.txt
 
-To add the cut down licenses.json set ``licenses_group_url = http://%(ckan.site_url)/licenses.json``
-or copy ``ckanext/datagovau/theme/public/licenses.json`` to the same folder as your CKAN config ini file
-and set ``licenses_group_url = file://%(here)s/licenses.json``
+2. Initialize git-hooks::
 
+     pre-commit install
 
+Testing
++++++++
 
-... ALTER TABLE group_revision ADD CONSTRAINT group_revision_continuity_id_fkey FOREIGN KEY (continuity_id) REFERENCES "group" (id);
+Run all the tests::
 
-
-... ckan agls vocabulary  create geospatial_topics
-... ckan agls vocabulary  create fields_of_research
+  pytest ckanext/datagovau/tests

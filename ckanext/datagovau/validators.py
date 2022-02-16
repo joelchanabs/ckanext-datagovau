@@ -41,7 +41,9 @@ def spatial_from_coverage(key, data, errors, context):
         data[("spatial_coverage",)] = data_dict.get("spatial_coverage")
         data[key] = data_dict.get("spatial")
     else:
-        errors[("spatial_coverage",)].append(tk._("Entered value cannot be converted into a spatial object"))
+        errors[("spatial_coverage",)].append(
+            tk._("Entered value cannot be converted into a spatial object")
+        )
 
 
 @validator

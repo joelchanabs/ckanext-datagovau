@@ -14,34 +14,33 @@ import ckan.lib.jobs as jobs
 import ckan.lib.helpers as h
 
 from . import validators, cli
-from ckanext.datagovau.geoserver_utils import run_ingestor, delete_ingested
+from ckanext.datagovau.geoserver_utils import (
+    run_ingestor,
+    delete_ingested,
+    CONFIG_PUBLIC_URL,
+)
 
 
-ingest_rest_list = [
-    'kml',
-    'kmz',
-    'shp',
-    'shapefile'
-]
+ingest_rest_list = ["kml", "kmz", "shp", "shapefile"]
 
-geo_pub_url = tk.config.get(
-            "ckanext.datagovau.spatialingestor.geoserver.public_url")
-
-ignore_ingestor_workflow = tk.config.get(
-            "ckanext.datagovau.spatialingestor.ignore_workflow", False)
+CONFIG_IGNORE_WORKFLOW = "ckanext.datagovau.spatialingestor.ignore_workflow"
+DEFAULT_IGNORE_WORKFLOW = False
 
 
-_original_xnotify = xloaderPlugin.notify
 def _dga_xnotify(self, resource):
     try:
         return _original_xnotify(self, resource)
     except tk.ObjectNotFound:
         # resource has `deleted` state
         pass
+
+
+_original_xnotify = xloaderPlugin.notify
 xloaderPlugin.notify = _dga_xnotify
 
 
 _original_permission_check = authz.has_user_permission_for_group_or_org
+
 
 def _dga_permission_check(group_id, user_name, permission):
     stack = inspect.stack()
@@ -100,51 +99,69 @@ class DataGovAuPlugin(p.SingletonPlugin):
         return search_params
 
     def after_delete(self, context, pkg_dict):
-        if pkg_dict.get('id'):
-            if not tk.asbool(ignore_ingestor_workflow):
+        if pkg_dict.get("id"):
+            if not tk.asbool(
+                tk.config.get(CONFIG_IGNORE_WORKFLOW, DEFAULT_IGNORE_WORKFLOW)
+            ):
                 try:
-                    jobs.enqueue(delete_ingested,
-                            kwargs={'pkg_id': pkg_dict['id']},
-                            rq_kwargs={'timeout': 1000})
+                    jobs.enqueue(
+                        delete_ingested,
+                        kwargs={"pkg_id": pkg_dict["id"]},
+                        rq_kwargs={"timeout": 1000},
+                    )
                 except Exception as e:
                     h.flash_error(f"{e}")
 
-    #IDomainObjectModification
-    
+    # IDomainObjectModification
+
     def notify(self, entity, operation):
-        if not tk.asbool(ignore_ingestor_workflow):
-            if operation == 'changed' and isinstance(entity, model.Package):
-                if entity.state == 'active':
+        if not tk.asbool(
+            tk.config.get(CONFIG_IGNORE_WORKFLOW, DEFAULT_IGNORE_WORKFLOW)
+        ):
+            if operation == "changed" and isinstance(entity, model.Package):
+                if entity.state == "active":
                     ingest_resources = [
-                        res for res in entity.resources
+                        res
+                        for res in entity.resources
                         if res.format.lower() in ingest_rest_list
                     ]
                     geoserver_resources = [
-                        res for res in entity.resources
-                        if geo_pub_url in res.url
+                        res
+                        for res in entity.resources
+                        if tk.config[CONFIG_PUBLIC_URL] in res.url
                     ]
 
                     if ingest_resources:
                         ingest_res = ingest_resources[0]
                         send = False
-                        
+
                         if not geoserver_resources:
                             send = True
                         else:
-                            if [r for r in geoserver_resources if r.last_modified == ingest_res.last_modified]:
+                            if [
+                                r
+                                for r in geoserver_resources
+                                if r.last_modified == ingest_res.last_modified
+                            ]:
                                 send = False
                             else:
-                                geo_res = geoserver_resources[0] 
-                                if ingest_res.last_modified > geo_res.last_modified:
+                                geo_res = geoserver_resources[0]
+                                if (
+                                    ingest_res.last_modified
+                                    > geo_res.last_modified
+                                ):
                                     send = True
 
                         if send:
                             try:
-                                jobs.enqueue(run_ingestor,
-                                        kwargs={'pkg_id': entity.id},
-                                        rq_kwargs={'timeout': 1000})
+                                jobs.enqueue(
+                                    run_ingestor,
+                                    kwargs={"pkg_id": entity.id},
+                                    rq_kwargs={"timeout": 1000},
+                                )
                                 h.flash_success(
-                                    f"Send {entity.id} for ingesting.")
+                                    f"Send {entity.id} for ingesting."
+                                )
                             except Exception as e:
                                 h.flash_error(f"{e}")
 

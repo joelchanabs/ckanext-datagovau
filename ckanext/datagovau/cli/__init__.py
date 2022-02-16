@@ -6,11 +6,7 @@ from .geoserveringestor import geoserver_ingestor
 
 
 def get_commands():
-    return [
-        spatial_ingestor,
-        dga,
-        geoserver_ingestor
-    ]
+    return [spatial_ingestor, dga, geoserver_ingestor]
 
 
 @click.group(short_help="DGA CLI")
