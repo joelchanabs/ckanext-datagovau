@@ -2,8 +2,11 @@ import logging
 import json
 import datetime
 import geomet
+from six import string_types
 
 import ckan.plugins.toolkit as tk
+from ckan.common import _
+from ckan.lib.navl.dictization_functions import Missing
 
 from ckanext.toolbelt.decorators import Collector
 from ckanext.agls.utils import details_for_gaz_id
@@ -52,3 +55,40 @@ def default_now(value):
         return value
 
     return datetime.datetime.now().isoformat()
+
+
+@validator("user_password_validator")
+def user_password_validator(key, data, errors, context):
+    base_pass_text = ('Password should have at least 8 characters '
+                      'and use of at least three of the following '
+                      'character sets in passphrases: '
+                      'lower-case alphabetical characters (a-z), '
+                      'upper-case alphabetical characters (A-Z), '
+                      'numeric characters (0-9) or'
+                      'special characters')
+
+    special_characters = r"!@#$%^&*()-+?_=,<>/"
+    value = data[key]
+
+    if isinstance(value, Missing):
+        return
+    elif not isinstance(value, string_types):
+        errors[('password',)].append(_(base_pass_text))
+    elif value == '':
+        return
+    elif len(value) < 8:
+        errors[('password',)].append(_(base_pass_text))
+
+    used_char_sets = 0
+
+    if len([x for x in value if x.islower()]):
+        used_char_sets += 1
+    if len([x for x in value if x.isupper()]):
+        used_char_sets += 1
+    if len([x for x in value if x.isdigit()]):
+        used_char_sets += 1
+    if len([x for x in value if x in special_characters]):
+        used_char_sets += 1
+
+    if used_char_sets < 3:
+        errors[('password',)].append(_(base_pass_text))
