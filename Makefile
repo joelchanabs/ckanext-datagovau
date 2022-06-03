@@ -1,7 +1,7 @@
 ###############################################################################
 #                             requirements: start                             #
 ###############################################################################
-ckan_tag = ckan-2.9.4
+ckan_tag = ckan-2.9.5
 ext_list = dcat officedocs pdfview zippreview spatial cesiumpreview harvest agls xloader
 
 
