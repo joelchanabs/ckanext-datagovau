@@ -43,15 +43,18 @@ def stats():
 
 
 @stats.command("collect-all")
-def collect_all():
-    """Fetch data for last 10 years"""
-    for date in _get_dates_for_last_ten_years():
+@click.option("--years", type=int, default=1,
+    help="Fetch GA data for last N years. Default 1"
+)
+def collect_all(years):
+    """Fetch data for last n years"""
+    for date in _get_dates_for_last_n_years(years):
         _collect(date)
 
     _fill_empty_values_for_packages()
 
 
-def _get_dates_for_last_ten_years() -> list[str]:
+def _get_dates_for_last_n_years(years) -> list[str]:
     """Return a list of dates in %Y-%m format"""
     current_year: int = dt.today().year
     current_month: int = dt.today().month
@@ -59,7 +62,7 @@ def _get_dates_for_last_ten_years() -> list[str]:
     dates: list[str] = []
 
     try:
-        for year in range(current_year - 0, current_year + 1):
+        for year in range(current_year - years + 1, current_year + 1):
             for month in range(1, 13):
                 dates.append(f"{year}-{month:02}")
 
@@ -112,6 +115,7 @@ def _fill_empty_values_for_packages():
 def collect():
     """Fetch fresh stats from Google Analytics"""
     _collect(dt.today().strftime("%Y-%m"))
+    _fill_empty_values_for_packages()
 
 
 def _collect(date):
@@ -136,6 +140,8 @@ def get_stats(date: str) -> dict[str, dict[str, int]]:
 
     parse_views_report(stats, get_dataset_views(date))
     parse_downloads_report(stats, get_resource_downloads(date))
+
+    _fill_stats_with_zeros_if_empty(stats)
 
     return stats
 
@@ -247,3 +253,9 @@ def _get_or_create_overall_stats(context) -> dict[str, Any]:
         )
 
     return stats["data"]
+
+
+def _fill_stats_with_zeros_if_empty(stats):
+    for stat in stats.values():
+        stat.setdefault('views', 0)
+        stat.setdefault('downloads', 0)
