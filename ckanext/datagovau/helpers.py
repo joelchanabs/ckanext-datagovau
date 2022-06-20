@@ -116,7 +116,8 @@ def get_package_stats(package_id: str):
                     else "green",
                 }
             ],
-            "total": sum(month[category] for month in stats.values())
+            "total": sum(month[category] for month in stats.values()),
+            "category": tk._(category.title())
         }
         for category in ("downloads", "views")
     ]
