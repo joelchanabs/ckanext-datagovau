@@ -18,7 +18,6 @@ from werkzeug.datastructures import FileStorage
 import click
 import ckanapi
 import ckan.plugins.toolkit as tk
-from ..utils import temp_dir
 
 log = logging.getLogger(__name__)
 
@@ -60,25 +59,25 @@ def zip_extract(
 ):
     """ZIP extractor for data.gov.au"""
     ckan = ckanapi.LocalCKAN(username)
-    from . import _zip_extract as z
+    from ..utils.zip import get_dataset_ids, select_extractable_resources
 
     if not ids:
-        ids = z.get_dataset_ids(ckan, days)
+        ids = get_dataset_ids(ckan, days)
     with ctx.meta["flask_app"].test_request_context():
-        for resource, dataset in z.select_extractable_resources(ckan, ids):
-            with temp_dir(resource["id"], tmp_dir) as path:
-                for result in z.extract_resource(resource, path):
-                    try:
-                        z.update_resource(*result, ckan, resource, dataset)
-                    except ckanapi.ValidationError:
-                        log.error(
-                            "Cannot update resource {} from dataset {}".format(
-                                resource["id"], dataset["id"]
-                            )
-                        )
-                        if skip_errors:
-                            continue
-                        raise
+        for resource in select_extractable_resources(ckan, ids):
+            try:
+                ckan.action.dga_extract_resource(
+                    id=resource["id"], tmp_dir=tmp_dir
+                )
+            except ckanapi.ValidationError:
+                log.error(
+                    "Cannot update resource %s from dataset %s",
+                    resource["id"],
+                    resource["package_id"],
+                )
+                if skip_errors:
+                    continue
+                raise
 
 
 @maintain.command()

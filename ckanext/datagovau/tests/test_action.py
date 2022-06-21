@@ -29,8 +29,6 @@ class TestGetPackageStats:
             call_action("dga_get_package_stats", id="test")
 
     def test_dataset_found(self, dataset):
-        dataset = dataset()
-
         flakes_flake_lookup = mock.Mock(
             return_value={
                 "data": {

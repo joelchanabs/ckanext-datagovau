@@ -1,3 +1,5 @@
+from __future__ import annotations
+import logging
 from typing import Any
 
 from ckanext.toolbelt.decorators import Collector
@@ -5,14 +7,15 @@ from ckanext.toolbelt.decorators import Collector
 import ckan.plugins.toolkit as tk
 from ckan.logic import validate
 
-from ckanext.datagovau.logic import schema
+from . import schema
+from ..utils import temp_dir
 
-
-action, get_get_actions = Collector("dga").split()
+log = logging.getLogger(__name__)
+action, get_actions = Collector("dga").split()
 
 
 @action
-@validate(schema.get_package_stats_schema)
+@validate(schema.get_package_stats)
 @tk.side_effect_free
 def get_package_stats(context, data_dict):
     tk.check_access("dga_get_package_stats", context, data_dict)
@@ -43,3 +46,18 @@ def get_package_stats(context, data_dict):
         )
 
     return pkg_stats
+
+
+@action
+@validate(schema.extract_resource)
+def extract_resource(context, data_dict):
+    from ckanext.datagovau.utils.zip import extract_resource, update_resource
+
+    resource = tk.get_action("resource_show")(context, {"id": data_dict["id"]})
+    dataset = tk.get_action("package_show")(
+        context, {"id": resource["package_id"]}
+    )
+
+    with temp_dir(resource["id"], data_dict["tmp_dir"]) as path:
+        for result in extract_resource(resource, path):
+            update_resource(*result, resource, dataset, context.copy())

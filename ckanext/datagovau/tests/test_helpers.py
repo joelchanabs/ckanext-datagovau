@@ -11,7 +11,6 @@ class TestGetPackageStatsHelper:
     def test_get_package_stats(self, app, sysadmin, dataset):
         with app.flask_app.test_request_context():
             flask.g.user = sysadmin["name"]
-            dataset = dataset()
 
             # no dataset statistics
             result = tk.h.dga_get_package_stats(dataset["id"])
@@ -29,7 +28,6 @@ class TestGetPackageStatsHelper:
                 }
             )
             logic._actions["dga_get_package_stats"] = dga_get_package_stats
-
 
             result = tk.h.dga_get_package_stats(dataset["id"])
 

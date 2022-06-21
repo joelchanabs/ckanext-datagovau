@@ -20,13 +20,11 @@ def clean_db(reset_db, migrate_db_for):
     migrate_db_for("flakes")
 
 
+@register(_name="sysadmin")
 class SysadminFactory(factories.Sysadmin):
     pass
 
 
-register(SysadminFactory, "sysadmin")
-
-
-@register
-class Dataset(factories.Dataset):
+@register(_name="dataset")
+class DatasetFactory(factories.Dataset):
     pass

@@ -120,55 +120,57 @@ class DataGovAuPlugin(p.SingletonPlugin):
     # IDomainObjectModification
 
     def notify(self, entity, operation):
-        if not tk.asbool(
+        if (
+            operation != "changed"
+            or not isinstance(entity, model.Package)
+            or entity.state != "active"
+        ):
+            return
+
+        if tk.asbool(
             tk.config.get(CONFIG_IGNORE_WORKFLOW, DEFAULT_IGNORE_WORKFLOW)
         ):
-            if operation == "changed" and isinstance(entity, model.Package):
-                if entity.state == "active":
-                    ingest_resources = [
-                        res
-                        for res in entity.resources
-                        if res.format.lower() in ingest_rest_list
-                    ]
-                    geoserver_resources = [
-                        res
-                        for res in entity.resources
-                        if tk.config[CONFIG_PUBLIC_URL] in res.url
-                    ]
+            return
 
-                    if ingest_resources:
-                        ingest_res = ingest_resources[0]
-                        send = False
+        ingest_resources = [
+            res
+            for res in entity.resources
+            if res.format.lower() in ingest_rest_list
+        ]
+        geoserver_resources = [
+            res
+            for res in entity.resources
+            if tk.config[CONFIG_PUBLIC_URL] in res.url
+        ]
 
-                        if not geoserver_resources:
-                            send = True
-                        else:
-                            if [
-                                r
-                                for r in geoserver_resources
-                                if r.last_modified == ingest_res.last_modified
-                            ]:
-                                send = False
-                            else:
-                                geo_res = geoserver_resources[0]
-                                if (
-                                    ingest_res.last_modified
-                                    > geo_res.last_modified
-                                ):
-                                    send = True
+        if ingest_resources:
+            ingest_res = ingest_resources[0]
+            send = False
 
-                        if send:
-                            try:
-                                jobs.enqueue(
-                                    run_ingestor,
-                                    kwargs={"pkg_id": entity.id},
-                                    rq_kwargs={"timeout": 1000},
-                                )
-                                h.flash_success(
-                                    f"Send {entity.id} for ingesting."
-                                )
-                            except Exception as e:
-                                h.flash_error(f"{e}")
+            if not geoserver_resources:
+                send = True
+            else:
+                if [
+                    r
+                    for r in geoserver_resources
+                    if r.last_modified == ingest_res.last_modified
+                ]:
+                    send = False
+                else:
+                    geo_res = geoserver_resources[0]
+                    if ingest_res.last_modified > geo_res.last_modified:
+                        send = True
+
+            if send:
+                try:
+                    jobs.enqueue(
+                        run_ingestor,
+                        kwargs={"pkg_id": entity.id},
+                        rq_kwargs={"timeout": 1000},
+                    )
+                    h.flash_success(f"Send {entity.id} for ingesting.")
+                except Exception as e:
+                    h.flash_error(f"{e}")
 
     # IAuthFunctions
 
