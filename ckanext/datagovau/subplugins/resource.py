@@ -1,3 +1,8 @@
+"""Resource operations specific for DGA
+
+Provides all sort of data extraction(zip, spatial) and submission(geoserver).
+
+"""
 from __future__ import annotations
 
 import logging
@@ -39,16 +44,19 @@ def resource_update(next_, context, data_dict):
 
 
 def _is_extractable(resource: dict[str, Any]) -> bool:
+    """Check if resource can be zip-extracted."""
     return "zip" in resource["format"].lower() and tk.asbool(
         resource.get("zip_extract")
     )
 
 
 def _schedule_unzip(resource: dict[str, Any]):
+    """Enqueue extraction task."""
     id_ = resource["id"]
     tk.enqueue_job(_call_unzip, [id_], title=f"ZIP-extraction of {id_}")
 
 
-def _call_unzip(id_):
+def _call_unzip(id_: str):
+    """Wrapper for enqueuing action as a background task."""
     user = tk.get_action("get_site_user")({"ignore_auth": True}, {})
     tk.get_action("dga_extract_resource")({"user": user["name"]}, {"id": id_})

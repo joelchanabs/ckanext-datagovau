@@ -51,12 +51,24 @@ def get_package_stats(context, data_dict):
 @action
 @validate(schema.extract_resource)
 def extract_resource(context, data_dict):
+    """Extract ZIP-resource into additional resoruces.
+
+    Args:
+        id(str): ID of the ZIP resource with `zip_extract` flag
+        tmp_dir(str, optional): temporal folder for extraction artifacts.
+    """
     from ckanext.datagovau.utils.zip import extract_resource, update_resource
 
     resource = tk.get_action("resource_show")(context, {"id": data_dict["id"]})
     dataset = tk.get_action("package_show")(
         context, {"id": resource["package_id"]}
     )
+
+    if "zip" not in resource["format"].lower():
+        raise tk.ValidationError({"id": ["Not a ZIP resource"]})
+
+    if not tk.asbool(resource.get("zip_extract")):
+        raise tk.ValidationError({"id": ["Extraction is not enabled"]})
 
     with temp_dir(resource["id"], data_dict["tmp_dir"]) as path:
         for result in extract_resource(resource, path):
