@@ -27,6 +27,7 @@ class ResourcePlugin(p.SingletonPlugin):
 @tk.chained_action
 def resource_create(next_, context, data_dict):
     result = next_(context, data_dict)
+
     if _is_extractable(result):
         _schedule_unzip(result)
 

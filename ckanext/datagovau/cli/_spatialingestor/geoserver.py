@@ -8,15 +8,7 @@ import requests
 import ckan.plugins.toolkit as tk
 from .exc import BadConfig
 
-CONFIG_URL = "ckanext.datagovau.spatialingestor.geoserver.url"
-CONFIG_PUBLIC_URL = "ckanext.datagovau.spatialingestor.geoserver.public_url"
-CONFIG_TIMEOUT = "ckanext.datagovau.spatialingestor.request_timeout"
-
-DEFAULT_TIMEOUT = 10
-
-
-def _timeout():
-    return tk.asint(tk.config.get(CONFIG_TIMEOUT, DEFAULT_TIMEOUT))
+from ckanext.datagovau.geoserver_utils import CONFIG_PUBLIC_URL, CONFIG_URL, _timeout
 
 
 class GeoServer(NamedTuple):
