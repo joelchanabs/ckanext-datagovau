@@ -127,7 +127,7 @@ class DataGovAuPlugin(p.SingletonPlugin):
         ):
             return
 
-        if 0 and tk.asbool(
+        if tk.asbool(
             tk.config.get(CONFIG_IGNORE_WORKFLOW, DEFAULT_IGNORE_WORKFLOW)
         ):
             return
@@ -138,10 +138,11 @@ class DataGovAuPlugin(p.SingletonPlugin):
             if res.format.lower() in ingest_rest_list
         ]
 
-        _do_spatial_ingest(entity.id)
-
         if ingest_resources:
             _do_geoserver_ingest(entity, ingest_resources)
+        else:
+            _do_spatial_ingest(entity.id)
+
 
     # IAuthFunctions
 
