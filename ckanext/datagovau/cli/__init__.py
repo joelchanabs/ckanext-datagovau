@@ -1,9 +1,9 @@
 import click
 
-from .spatialingestor import spatial_ingestor
 from . import maintain
 from .geoserveringestor import geoserver_ingestor
 from .googleanalytics import stats
+from .spatialingestor import spatial_ingestor
 
 
 def get_commands():

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import os
 import logging
+import os
 from urllib.parse import urlsplit
 
 import ckan.plugins.toolkit as tk
+
 from ..utils import download
 
 log = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 from unittest import mock
-import pytest
 
+import pytest
 from ckan.tests.helpers import call_action
 
 

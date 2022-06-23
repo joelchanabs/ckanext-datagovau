@@ -3,16 +3,16 @@ from __future__ import annotations
 import re
 from typing import Any, NamedTuple
 
-import requests
-
 import ckan.plugins.toolkit as tk
-from .exc import BadConfig
+import requests
 
 from ckanext.datagovau.geoserver_utils import (
     CONFIG_PUBLIC_URL,
     CONFIG_URL,
     _timeout,
 )
+
+from .exc import BadConfig
 
 
 class GeoServer(NamedTuple):

@@ -1,9 +1,10 @@
-import click
-from ckan import model
-from ckanext.datagovau.geoserver_utils import run_ingestor, CONFIG_PUBLIC_URL
-import ckan.plugins.toolkit as tk
 import logging
 
+import ckan.plugins.toolkit as tk
+import click
+from ckan import model
+
+from ckanext.datagovau.geoserver_utils import CONFIG_PUBLIC_URL, run_ingestor
 
 log = logging.getLogger(__name__)
 

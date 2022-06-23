@@ -1,14 +1,15 @@
 from __future__ import annotations
+
 import logging
 from typing import Any
-
-from ckanext.toolbelt.decorators import Collector
 
 import ckan.plugins.toolkit as tk
 from ckan.logic import validate
 
-from . import schema
+from ckanext.toolbelt.decorators import Collector
+
 from ..utils import temp_dir
+from . import schema
 
 log = logging.getLogger(__name__)
 action, get_actions = Collector("dga").split()

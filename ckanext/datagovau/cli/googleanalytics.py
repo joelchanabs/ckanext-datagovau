@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-import re
 import calendar
+import re
 from datetime import datetime as dt
 from typing import Any
 
-import click
-from typing_extensions import TypedDict
-
 import ckan.model as model
 import ckan.plugins.toolkit as tk
-
+import click
+from typing_extensions import TypedDict
 
 RE_PKG = re.compile(r"/dataset/(?P<id>[^/?#]+)")
 RE_RES = re.compile(

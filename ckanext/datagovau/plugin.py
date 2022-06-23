@@ -4,24 +4,23 @@ import inspect
 import logging
 from typing import Any
 
+import ckan.authz as authz
+import ckan.lib.helpers as h
+import ckan.lib.jobs as jobs
+import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as tk
-import ckan.model as model
-import ckan.authz as authz
-import ckan.lib.jobs as jobs
-import ckan.lib.helpers as h
-
-from ckanext.xloader.plugin import xloaderPlugin
 
 import ckanext.datagovau.helpers as helpers
-from ckanext.datagovau import validators, cli
+from ckanext.datagovau import cli, validators
+from ckanext.datagovau.geoserver_utils import (
+    CONFIG_PUBLIC_URL,
+    delete_ingested,
+    run_ingestor,
+)
 from ckanext.datagovau.logic.action import get_actions
 from ckanext.datagovau.logic.auth import get_auth_functions
-from ckanext.datagovau.geoserver_utils import (
-    run_ingestor,
-    delete_ingested,
-    CONFIG_PUBLIC_URL,
-)
+from ckanext.xloader.plugin import xloaderPlugin
 
 log = logging.getLogger(__name__)
 

@@ -1,16 +1,16 @@
-import logging
-import json
 import datetime
-import geomet
-import requests
-from six import string_types
+import json
+import logging
 
 import ckan.plugins.toolkit as tk
+import geomet
+import requests
 from ckan.common import _
 from ckan.lib.navl.dictization_functions import Missing
+from six import string_types
 
-from ckanext.toolbelt.decorators import Collector
 from ckanext.agls.utils import details_for_gaz_id
+from ckanext.toolbelt.decorators import Collector
 
 log = logging.getLogger(__name__)
 validator, get_validators = Collector("dga").split()

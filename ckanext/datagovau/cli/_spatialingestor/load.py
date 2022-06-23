@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-import os
-import logging
-from typing import Any
-import zipfile
 import glob
+import logging
+import os
 import subprocess
+import zipfile
+from typing import Any
 
 import lxml.etree as et
-
 from osgeo import osr
 from osgeo_utils import gdal_retile
 from osgeo_utils.samples import ogr2ogr
 
 from ckanext.datagovau import utils
-from .exc import fail
+
 from . import config
+from .exc import fail
 
 log = logging.getLogger(__name__)
 

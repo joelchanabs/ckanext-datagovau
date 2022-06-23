@@ -1,9 +1,9 @@
-import pytest
-import flask
 import unittest.mock as mock
 
 import ckan.logic as logic
 import ckan.plugins.toolkit as tk
+import flask
+import pytest
 
 
 @pytest.mark.usefixtures("with_request_context", "with_plugins", "clean_db")

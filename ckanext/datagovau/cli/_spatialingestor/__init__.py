@@ -1,31 +1,22 @@
 from __future__ import annotations
 
+import contextlib
 import glob
 import logging
 import os
 import shutil
-
-import contextlib
-from typing import (
-    Any,
-    NamedTuple,
-    Optional,
-    Dict,
-    List,
-)
+from datetime import datetime
+from typing import Any, Dict, List, NamedTuple, Optional
 from urllib.parse import quote
 
-from datetime import datetime
-import psycopg2
-
 import ckan.plugins.toolkit as tk
+import psycopg2
 
 from ckanext.datagovau import utils
 
-
-from .geoserver import get_geoserver
-from .exc import IngestionFail, fail
 from . import config, load
+from .exc import IngestionFail, fail
+from .geoserver import get_geoserver
 
 log = logging.getLogger(__name__)
 

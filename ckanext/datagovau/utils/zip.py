@@ -1,15 +1,15 @@
 from __future__ import annotations
-import os
+
 import logging
+import os
 import zipfile
 from datetime import datetime
-
-from werkzeug.datastructures import FileStorage
 from typing import Any, Iterable
 
+import ckan.plugins.toolkit as tk
 import ckanapi
 import requests
-import ckan.plugins.toolkit as tk
+from werkzeug.datastructures import FileStorage
 
 CONFIG_INTERESTING_EXTENSIONS = (
     "ckanext.datagovau.zip-extractor.interesting_extensions"

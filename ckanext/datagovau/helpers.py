@@ -1,20 +1,18 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
 from datetime import datetime as dt
+from typing import Any, Optional
 
-import feedparser
-
-import ckan.plugins.toolkit as tk
 import ckan.model as model
+import ckan.plugins.toolkit as tk
+import feedparser
 
 import ckanext.agls.utils as agls_utils
 import ckanext.datastore.backend as datastore_backend
 from ckanext.toolbelt.decorators import Cache, Collector
 
 from . import types
-
 
 helper, get_helpers = Collector("dga").split()
 cache = Cache(duration=600)

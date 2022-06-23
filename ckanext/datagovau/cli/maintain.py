@@ -1,23 +1,19 @@
 from __future__ import annotations
 
-import logging
 import json
+import logging
+from email.utils import formatdate
 from functools import partial
-from time import time
 from tempfile import mkstemp
+from time import time
+from typing import BinaryIO, Iterable, Optional, Sequence, TextIO
 
 import ckan.model as model
-
-
-from email.utils import formatdate
-
-from typing import BinaryIO, Iterable, Optional, Sequence, TextIO
+import ckan.plugins.toolkit as tk
+import ckanapi
+import click
 from sqlalchemy.exc import ProgrammingError
 from werkzeug.datastructures import FileStorage
-
-import click
-import ckanapi
-import ckan.plugins.toolkit as tk
 
 log = logging.getLogger(__name__)
 

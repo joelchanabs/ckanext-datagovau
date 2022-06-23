@@ -1,17 +1,13 @@
-import ckan.plugins.toolkit as tk
-import requests
-import json
-import psycopg2
-import logging
 import contextlib
+import json
+import logging
 import time
-
+from typing import Any, Optional
 from urllib.parse import quote
 
-from typing import (
-    Any,
-    Optional,
-)
+import ckan.plugins.toolkit as tk
+import psycopg2
+import requests
 
 from ckanext.datagovau import utils
 

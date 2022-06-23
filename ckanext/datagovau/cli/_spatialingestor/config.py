@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import re
 import grp
 import pwd
-
-from typing import Optional, Union, Literal
+import re
+from typing import Literal, Optional, Union
 
 import ckan.plugins.toolkit as tk
+
 from .exc import BadConfig
 
 

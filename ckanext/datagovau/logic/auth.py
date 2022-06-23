@@ -1,7 +1,6 @@
-from ckanext.toolbelt.decorators import Collector
-
 from ckan.authz import is_authorized
 
+from ckanext.toolbelt.decorators import Collector
 
 auth, get_auth_functions = Collector("dga").split()
 

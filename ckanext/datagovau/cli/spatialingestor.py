@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import ckan.plugins.toolkit as tk
 import click
 from ckan import model
-import ckan.plugins.toolkit as tk
 
 
 @click.group("spatial-ingestor", short_help="Ingest spatial data")

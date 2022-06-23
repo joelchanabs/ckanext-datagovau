@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import shutil
-import tempfile
 import contextlib
 import logging
+import shutil
+import tempfile
 from typing import Container, Iterable, TypeVar
 
 import requests
