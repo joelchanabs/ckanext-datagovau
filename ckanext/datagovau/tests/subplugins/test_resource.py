@@ -4,7 +4,7 @@ import pytest
 from ckan.tests.helpers import call_action
 
 
-@pytest.mark.ckan_config("ckan.plugins", "datagovau dga_resource")
+@pytest.mark.ckan_config("ckan.plugins", "datagovau dga_resource flakes")
 @pytest.mark.usefixtures("with_plugins", "clean_db")
 class TestScheduler:
     @mock.patch("ckanext.datagovau.subplugins.resource._schedule_unzip")
