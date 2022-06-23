@@ -43,8 +43,11 @@ def stats():
 
 
 @stats.command("collect-all")
-@click.option("--years", type=int, default=1,
-    help="Fetch GA data for last N years. Default 1"
+@click.option(
+    "--years",
+    type=int,
+    default=1,
+    help="Fetch GA data for last N years. Default 1",
 )
 def collect_all(years):
     """Fetch data for last n years"""
@@ -203,7 +206,7 @@ def get_resource_downloads(date) -> GaData:
         "dimensions": "ga:pagePath,ga:eventCategory,ga:eventAction",
         "metrics": "ga:totalEvents",
         "category": "Resource",
-        "action": "Download"
+        "action": "Download",
     }
 
     return _get_stats_data(date, data_dict)
@@ -257,5 +260,5 @@ def _get_or_create_overall_stats(context) -> dict[str, Any]:
 
 def _fill_stats_with_zeros_if_empty(stats):
     for stat in stats.values():
-        stat.setdefault('views', 0)
-        stat.setdefault('downloads', 0)
+        stat.setdefault("views", 0)
+        stat.setdefault("downloads", 0)

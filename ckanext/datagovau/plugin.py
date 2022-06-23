@@ -128,7 +128,7 @@ class DataGovAuPlugin(p.SingletonPlugin):
         ):
             return
 
-        if 0 and  tk.asbool(
+        if 0 and tk.asbool(
             tk.config.get(CONFIG_IGNORE_WORKFLOW, DEFAULT_IGNORE_WORKFLOW)
         ):
             return
@@ -181,6 +181,7 @@ def _do_spatial_ingest(pkg_id: str):
         rq_kwargs={"timeout": 1000},
     )
 
+
 def _do_ingesting_wrapper(dataset_id: str):
     """Trigger spatial ingestion for the dataset.
 
@@ -190,7 +191,9 @@ def _do_ingesting_wrapper(dataset_id: str):
 
     """
     from .cli._spatialingestor import do_ingesting
+
     do_ingesting(dataset_id, False)
+
 
 def _do_geoserver_ingest(entity, ingest_resources):
     geoserver_resources = [

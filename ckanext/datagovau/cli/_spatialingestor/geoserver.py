@@ -8,7 +8,11 @@ import requests
 import ckan.plugins.toolkit as tk
 from .exc import BadConfig
 
-from ckanext.datagovau.geoserver_utils import CONFIG_PUBLIC_URL, CONFIG_URL, _timeout
+from ckanext.datagovau.geoserver_utils import (
+    CONFIG_PUBLIC_URL,
+    CONFIG_URL,
+    _timeout,
+)
 
 
 class GeoServer(NamedTuple):
