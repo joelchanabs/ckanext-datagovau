@@ -3,6 +3,7 @@ import click
 from .spatialingestor import spatial_ingestor
 from . import maintain
 from .geoserveringestor import geoserver_ingestor
+from .googleanalytics import stats
 
 
 def get_commands():
@@ -16,3 +17,4 @@ def dga():
 
 
 dga.add_command(maintain.maintain)
+dga.add_command(stats)

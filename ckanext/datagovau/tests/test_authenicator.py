@@ -9,7 +9,7 @@ def authenticator():
     return UsernameEmailPasswordAuthenticator()
 
 
-@pytest.mark.usefixtures("clean_db")
+@pytest.mark.usefixtures("with_plugins", "clean_db")
 @pytest.mark.parametrize("user__password", [password])
 class TestAuthenicator:
     def test_login_by_name(self, user, authenticator):

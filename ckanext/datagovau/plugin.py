@@ -3,17 +3,20 @@ from __future__ import annotations
 import inspect
 
 from typing import Any
+
 import ckan.plugins as p
 import ckan.plugins.toolkit as tk
 import ckan.model as model
-
-import ckanext.datagovau.helpers as helpers
-from ckanext.xloader.plugin import xloaderPlugin
 import ckan.authz as authz
 import ckan.lib.jobs as jobs
 import ckan.lib.helpers as h
 
-from . import validators, cli
+from ckanext.xloader.plugin import xloaderPlugin
+
+import ckanext.datagovau.helpers as helpers
+from ckanext.datagovau import validators, cli
+from ckanext.datagovau.logic.action import get_actions
+from ckanext.datagovau.logic.auth import get_auth_functions
 from ckanext.datagovau.geoserver_utils import (
     run_ingestor,
     delete_ingested,
@@ -61,6 +64,8 @@ class DataGovAuPlugin(p.SingletonPlugin):
     p.implements(p.IClick)
     p.implements(p.IPackageController, inherit=True)
     p.implements(p.IDomainObjectModification)
+    p.implements(p.IActions)
+    p.implements(p.IAuthFunctions)
 
     # IClick
 
@@ -164,6 +169,16 @@ class DataGovAuPlugin(p.SingletonPlugin):
                                 )
                             except Exception as e:
                                 h.flash_error(f"{e}")
+
+    # IAuthFunctions
+
+    def get_auth_functions(self):
+        return get_auth_functions()
+
+    # IActions
+
+    def get_actions(self):
+        return get_actions()
 
 
 _stat_fq = {

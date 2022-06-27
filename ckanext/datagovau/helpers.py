@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import time
 from typing import Any, Optional
+from datetime import datetime as dt
 
-import ckan.plugins.toolkit as tk
-import ckanext.datastore.backend as datastore_backend
 import feedparser
 
-from ckanext.toolbelt.decorators import Cache, Collector
+import ckan.plugins.toolkit as tk
+import ckan.model as model
+
 import ckanext.agls.utils as agls_utils
+import ckanext.datastore.backend as datastore_backend
+from ckanext.toolbelt.decorators import Cache, Collector
 
 from . import types
+
 
 helper, get_helpers = Collector("dga").split()
 cache = Cache(duration=600)
@@ -80,3 +84,40 @@ _stat_labels = {
 @helper
 def stat_group_to_facet_label(group: str) -> Optional[str]:
     return _stat_labels.get(group)
+
+
+@helper
+def get_package_stats(package_id: str):
+    context = {
+        "model": model,
+        "session": model.Session,
+        "user": tk.g.user,
+    }
+
+    try:
+        stats = tk.get_action("dga_get_package_stats")(
+            context, {"id": package_id}
+        )
+    except (tk.ObjectNotFound, tk.ValidationError, tk.NotAuthorized):
+        return {}
+
+    return [
+        {
+            "labels": [
+                dt.strptime(date, "%Y-%m").strftime("%Y %b")
+                for date in stats.keys()
+            ],
+            "datasets": [
+                {
+                    "label": tk._(category.title()),
+                    "data": [month[category] for month in stats.values()],
+                    "backgroundColor": "blue"
+                    if category == "views"
+                    else "green",
+                }
+            ],
+            "total": sum(month[category] for month in stats.values()),
+            "category": tk._(category.title())
+        }
+        for category in ("downloads", "views")
+    ]
