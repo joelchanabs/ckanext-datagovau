@@ -661,7 +661,7 @@ def may_skip(dataset_id: str) -> bool:
         log.debug("Can not determine unique spatial file to ingest")
         return True
 
-    activity_list = call_action("package_activity_list", {"id": dataset["id"]})
+    activity_list = call_action("package_activity_list", {"id": dataset["id"], "include_hidden_activity": True})
 
     user = call_action("user_show", {"id": config.username()}, True)
 
