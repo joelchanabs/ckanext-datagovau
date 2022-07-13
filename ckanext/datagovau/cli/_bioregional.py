@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-import click
+import os
 import smtplib
 import tempfile
-import os
-
-from email.utils import formatdate
 from email.message import EmailMessage
+from email.utils import formatdate
 from typing import Any, BinaryIO, Iterable, Optional, Sequence, TextIO, Union
 
-import requests
 import boto3
-from botocore.exceptions import ClientError
-
 import ckan.plugins.toolkit as tk
+import click
+import requests
+from botocore.exceptions import ClientError
 
 
 class Download:

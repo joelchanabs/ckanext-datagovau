@@ -1,9 +1,9 @@
 from ckanext.dcat.profiles import (
+    RDF,
+    BNode,
+    Literal,
     SchemaOrgProfile,
     namespaces,
-    Literal,
-    BNode,
-    RDF,
 )
 
 

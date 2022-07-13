@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-import os
-import logging
-from typing import Any
-import zipfile
 import glob
+import logging
+import os
 import subprocess
+import zipfile
+from typing import Any
 
-import lxml.etree as et
-
-from osgeo import osr
 from osgeo_utils import gdal_retile
 from osgeo_utils.samples import ogr2ogr
 
 from ckanext.datagovau import utils
-from .exc import fail
+
 from . import config
+from .exc import fail
 
 log = logging.getLogger(__name__)
 
@@ -36,163 +34,6 @@ CRS_MAPPING = {
         'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984"',
     ],
 }
-
-
-def esri(resource: dict[str, Any], table_name: str, tempdir: str) -> str:
-    log.debug("_load_esri_shapefiles():: shp_res = %s", resource["id"])
-    log.debug("Using SHP file %s", resource["url"])
-
-    if any(resource["url"].lower().endswith(x) for x in ["shp", "shapefile"]):
-        utils.download(resource["url"], "input.shp")
-    else:
-        utils.download(resource["url"], "input.zip")
-        archive = zipfile.ZipFile("input.zip")
-        archive.extractall()
-
-    shpfiles = glob.glob("*.[sS][hH][pP]")
-    prjfiles = glob.glob("*.[pP][rR][jJ]")
-    if not shpfiles:
-        fail("No shp files found in zip " + resource["url"])
-    log.debug(f"converting to pgsql {table_name} {shpfiles[0]}")
-
-    if prjfiles:
-        prj_txt = open(prjfiles[0], "r").read()
-        log.debug(
-            "spatialingestor::_load_esri_shapefiles():: prj_txt = %s", prj_txt
-        )
-        sr = osr.SpatialReference()
-        sr.ImportFromESRI([prj_txt])
-        log.debug("spatialingestor::_load_esri_shapefiles():: sr = %s", sr)
-        res = sr.AutoIdentifyEPSG()
-        if res == 0:  # success
-            native_crs = (
-                sr.GetAuthorityName(None) + ":" + sr.GetAuthorityCode(None)
-            )
-        else:
-            for key, values in CRS_MAPPING.items():
-                if utils.contains(prj_txt, values):
-                    native_crs = key
-                    break
-            else:
-                # If searching the mapping items yielded nothing,
-                # assign default CRS.
-                native_crs = "EPSG:4326"
-
-    else:
-        # if wyndham then GDA_1994_MGA_Zone_55 EPSG:28355
-        native_crs = "EPSG:4326"
-    pargs = [
-        " ",
-        "-f",
-        "PostgreSQL",
-        "--config",
-        "PG_USE_COPY",
-        "YES",
-        config.db_param(),
-        tempdir,
-        "-lco",
-        "GEOMETRY_NAME=geom",
-        "-lco",
-        "PRECISION=NO",
-        "-nln",
-        table_name,
-        "-t_srs",
-        native_crs,
-        "-nlt",
-        "PROMOTE_TO_MULTI",
-        "-overwrite",
-    ]
-
-    exit_code = _call_ogr2ogr(pargs)
-    if exit_code:
-        fail("Ogr2ogr: Failed to convert file to PostGIS")
-
-    return native_crs
-
-
-def kml(resource: dict[str, Any], table_name: str) -> str:
-    log.debug("Using KML file %s", resource["url"])
-    native_crs = "EPSG:4326"
-    # if kml ogr2ogr http://gis.stackexchange.com/questions/33102
-    # /how-to-import-kml-file-with-custom-data-to-postgres-postgis-database
-    if resource["format"] == "kmz" or "kmz" in resource["url"].lower():
-        utils.download(resource["url"], "input.zip")
-        archive = zipfile.ZipFile("input.zip")
-        archive.extractall()
-        log.debug("KMZ unziped")
-
-        kmlfiles = glob.glob("*.[kK][mM][lL]")
-        if len(kmlfiles) == 0:
-            fail("No kml files found in zip " + resource["url"])
-        else:
-            kml_file = kmlfiles[0]
-    else:
-        utils.download(resource["url"], "input.kml")
-        kml_file = "input.kml"
-
-    log.debug("Changing kml folder name in %s", kml_file)
-    tree = et.parse(kml_file)
-    element = tree.xpath(
-        "//kml:Folder/kml:name",
-        namespaces={"kml": "http://www.opengis.net/kml/2.2"},
-    )
-    if 0 in element:
-        element[0].text = table_name
-    else:
-        log.debug("No kml:Folder tag found")
-    find = et.ETXPath(
-        "//{http://www.opengis.net/kml/2.2}Folder"
-        "/{http://www.opengis.net/kml/2.2}name"
-    )
-    element = find(tree)
-    if len(element):
-        for x in range(0, len(element)):
-            log.debug(element[x].text)
-            element[x].text = table_name
-    else:
-        log.debug("no Folder tag found")
-    find = et.ETXPath(
-        "//{http://earth.google.com/kml/2.1}Folder"
-        "/{http://earth.google.com/kml/2.1}name"
-    )
-    element = find(tree)
-    if len(element):
-        for x in range(0, len(element)):
-            element[x].text = table_name
-    else:
-        log.debug("no Folder tag found")
-    with open(table_name + ".kml", "wb") as ofile:
-        ofile.write(et.tostring(tree))
-    log.debug("converting to pgsql %s.kml", table_name)
-
-    pargs = [
-        "",
-        "-f",
-        "PostgreSQL",
-        "--config",
-        "PG_USE_COPY",
-        "YES",
-        config.db_param(),
-        table_name + ".kml",
-        "-lco",
-        "GEOMETRY_NAME=geom",
-        "-lco",
-        "PRECISION=NO",
-        "-nln",
-        table_name,
-        "-nlt",
-        "PROMOTE_TO_MULTI",
-        "-t_srs",
-        native_crs,
-        "-overwrite",
-    ]
-
-    exit_code = _call_ogr2ogr(pargs)
-    if exit_code:
-        fail("Ogr2ogr: Failed to convert file to PostGIS")
-
-    return native_crs
-
 
 def tab(resource: dict[str, Any], table_name: str) -> str:
     log.debug("using TAB file %s", resource["url"])

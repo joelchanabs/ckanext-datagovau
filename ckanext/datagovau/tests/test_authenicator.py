@@ -1,4 +1,5 @@
 import pytest
+
 from ..authenticator import UsernameEmailPasswordAuthenticator
 
 password = "Password123"

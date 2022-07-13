@@ -1,17 +1,13 @@
-import ckan.plugins.toolkit as tk
-import requests
-import json
-import psycopg2
-import logging
 import contextlib
+import json
+import logging
 import time
-
+from typing import Any, Optional
 from urllib.parse import quote
 
-from typing import (
-    Any,
-    Optional,
-)
+import ckan.plugins.toolkit as tk
+import psycopg2
+import requests
 
 from ckanext.datagovau import utils
 
@@ -20,6 +16,7 @@ log = logging.getLogger(__name__)
 CONFIG_PUBLIC_URL = "ckanext.datagovau.spatialingestor.geoserver.public_url"
 CONFIG_TIMEOUT = "ckanext.datagovau.spatialingestor.request_timeout"
 CONFIG_IGNORE = "ckanext.datagovau.spatialingestor.pkg_blacklist"
+CONFIG_URL = "ckanext.datagovau.spatialingestor.geoserver.url"
 
 DEFAULT_IGNORE = []
 DEFAULT_TIMEOUT = 10
@@ -39,9 +36,7 @@ class Geoserverobj:
             "shp": ["shp", "shapefile"],
             "kml": ["kml", "kmz"],
         }
-        self.geoserver_url = tk.config.get(
-            "ckanext.datagovau.spatialingestor.geoserver.url"
-        )
+        self.geoserver_url = tk.config.get(CONFIG_URL)
         self.geoserver_public_url = tk.config.get(CONFIG_PUBLIC_URL)
         self.geoserver_workspace = "WORKSPACE"
 

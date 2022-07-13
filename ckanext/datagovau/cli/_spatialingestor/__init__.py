@@ -1,31 +1,22 @@
 from __future__ import annotations
 
+import contextlib
 import glob
 import logging
 import os
 import shutil
-
-import contextlib
-from typing import (
-    Any,
-    NamedTuple,
-    Optional,
-    Dict,
-    List,
-)
+from datetime import datetime
+from typing import Any, Dict, List, NamedTuple, Optional
 from urllib.parse import quote
 
-from datetime import datetime
-import psycopg2
-
 import ckan.plugins.toolkit as tk
+import psycopg2
 
 from ckanext.datagovau import utils
 
-
-from .geoserver import get_geoserver
-from .exc import IngestionFail, fail
 from . import config, load
+from .exc import IngestionFail, fail
+from .geoserver import get_geoserver
 
 log = logging.getLogger(__name__)
 
@@ -33,8 +24,6 @@ ResourceGroup = List[Dict[str, Any]]
 
 
 class GroupedResources(NamedTuple):
-    shp: ResourceGroup
-    kml: ResourceGroup
     tab: ResourceGroup
     tiff: ResourceGroup
     grid: ResourceGroup
@@ -42,8 +31,6 @@ class GroupedResources(NamedTuple):
 
     @classmethod
     def from_dataset(cls, dataset: dict[str, Any]):
-        shp = []
-        kml = []
         tab = []
         tiff = []
         grid = []
@@ -61,18 +48,14 @@ class GroupedResources(NamedTuple):
             if utils.contains(fmt, {"sld"}):
                 sld.append(resource)
             elif is_source:
-                if utils.contains(fmt, {"kml", "kmz"}):
-                    kml.append(resource)
-                elif utils.contains(fmt, {"shp", "shapefile", "shz"}):
-                    shp.append(resource)
-                elif utils.contains(fmt, {"tab", "mapinfo"}):
+                if utils.contains(fmt, {"tab", "mapinfo"}):
                     tab.append(resource)
                 elif utils.contains(fmt, {"grid"}):
                     grid.append(resource)
                 elif utils.contains(fmt, {"geotif"}):
                     tiff.append(resource)
 
-        return cls(shp, kml, tab, tiff, grid, sld)
+        return cls(tab, tiff, grid, sld)
 
 
 def _clean_dir(tempdir: str):
@@ -186,17 +169,11 @@ def _apply_sld_resources(
 
 def _convert_resources(
     table_name: str, temp_dir: str, resources: GroupedResources
-) -> tuple[bool, bool, str]:
-    using_kml = False
+) -> tuple[bool, str]:
     using_grid = False
     native_crs = ""
 
-    if len(resources.shp):
-        native_crs = load.esri(resources.shp[0], table_name, temp_dir)
-    elif len(resources.kml):
-        using_kml = True
-        native_crs = load.kml(resources.kml[0], table_name)
-    elif len(resources.tab):
+    if len(resources.tab):
         native_crs = load.tab(resources.tab[0], table_name)
     elif len(resources.tiff):
         using_grid = True
@@ -205,26 +182,11 @@ def _convert_resources(
         using_grid = True
         native_crs = load.grid(resources.grid[0], table_name, temp_dir)
 
-    return using_kml, using_grid, native_crs
+    return using_grid, native_crs
 
 
-def _get_geojson(using_kml: bool, table_name: str) -> tuple[str, str, str]:
+def _get_geojson(table_name: str) -> tuple[str, str, str]:
     cur, conn = _get_cursor()
-    if using_kml:
-        try:
-            # TODO: do you need this at all?
-            cur.execute(
-                (
-                    'alter table "{}" DROP "description" RESTRICT, '
-                    "DROP timestamp RESTRICT, DROP begin RESTRICT, "
-                    'DROP "end" RESTRICT, DROP altitudemode RESTRICT, '
-                    "DROP tessellate RESTRICT, DROP extrude RESTRICT, "
-                    "DROP visibility RESTRICT, DROP draworder RESTRICT, "
-                    "DROP icon RESTRICT;"
-                ).format(table_name)
-            )
-        except Exception:
-            log.error("KML error", exc_info=True)
     select_query = (
         "SELECT ST_Extent(geom) as box,"
         "ST_Extent(ST_Transform(geom,4326)) as latlngbox, "
@@ -367,23 +329,6 @@ def _create_resources_from_formats(
                     "last_modified": datetime.now().isoformat(),
                 },
             )
-        elif _format == "kml" and _format not in existing_formats:
-            log.debug("Creating KML Resource")
-            call_action(
-                "resource_create",
-                {
-                    "package_id": dataset["id"],
-                    "name": dataset["title"] + " KML",
-                    "description": (
-                        "View a map of this dataset in web "
-                        "and desktop spatial data tools"
-                        " including Google Earth"
-                    ),
-                    "format": _format,
-                    "url": url,
-                    "last_modified": datetime.now().isoformat(),
-                },
-            )
         elif _format in ["wms", "wfs"] and _format not in existing_formats:
             if _format == "wms":
                 log.debug("Creating WMS API Endpoint Resource")
@@ -459,11 +404,11 @@ def _delete_resources(dataset):
 
 def _prepare_everything(
     dataset: dict[str, Any], resources: GroupedResources, tempdir: str
-) -> tuple[bool, bool, str, str, str]:
+) -> tuple[bool, str, str, str]:
     table_name = _clear_old_table(dataset)
     _clean_dir(config.data_dir(table_name))
 
-    using_kml, using_grid, native_crs = _convert_resources(
+    using_grid, native_crs = _convert_resources(
         table_name, tempdir, resources
     )
 
@@ -485,7 +430,7 @@ def _prepare_everything(
         fail(f"Failed to create Geoserver workspace: {r.content}")
 
     # load bounding boxes from database
-    return using_kml, using_grid, table_name, workspace, native_crs
+    return using_grid, table_name, workspace, native_crs
 
 
 def clean_assets(dataset_id: str, skip_grids: bool = False):
@@ -531,7 +476,6 @@ def do_ingesting(dataset_id: str, force: bool):
 
         try:
             (
-                using_kml,
                 using_grid,
                 table_name,
                 workspace,
@@ -592,7 +536,7 @@ def do_ingesting(dataset_id: str, force: bool):
         bbox_obj = None
         try:
             if not using_grid:
-                bbox, latlngbbox, bgjson = _get_geojson(using_kml, table_name)
+                bbox, latlngbbox, bgjson = _get_geojson(table_name)
                 bbox_obj = (
                     _update_package_with_bbox(
                         bbox,
@@ -717,7 +661,7 @@ def may_skip(dataset_id: str) -> bool:
         log.debug("Can not determine unique spatial file to ingest")
         return True
 
-    activity_list = call_action("package_activity_list", {"id": dataset["id"]})
+    activity_list = call_action("package_activity_list", {"id": dataset["id"], "include_hidden_activity": True})
 
     user = call_action("user_show", {"id": config.username()}, True)
 

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, Optional
-from ckan.lib.authenticator import UsernamePasswordAuthenticator
+
 import ckan.model as model
+from ckan.lib.authenticator import UsernamePasswordAuthenticator
 
 
 class UsernameEmailPasswordAuthenticator(UsernamePasswordAuthenticator):

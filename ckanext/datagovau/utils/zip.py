@@ -1,15 +1,15 @@
 from __future__ import annotations
-import os
-from datetime import datetime
+
 import logging
+import os
 import zipfile
-
+from datetime import datetime
 from typing import Any, Iterable
-from werkzeug.datastructures import FileStorage
 
+import ckan.plugins.toolkit as tk
 import ckanapi
 import requests
-import ckan.plugins.toolkit as tk
+from werkzeug.datastructures import FileStorage
 
 CONFIG_INTERESTING_EXTENSIONS = (
     "ckanext.datagovau.zip-extractor.interesting_extensions"
@@ -47,7 +47,7 @@ def get_dataset_ids(ckan: ckanapi.LocalCKAN, days: int) -> Iterable[str]:
 
 def select_extractable_resources(
     ckan: ckanapi.LocalCKAN, dataset_ids: Iterable[str]
-) -> Iterable[tuple[dict[str, Any], dict[str, Any]]]:
+) -> Iterable[dict[str, Any]]:
 
     current_user = ckan.action.user_show(id=ckan.username)
     for id_ in dataset_ids:
@@ -67,7 +67,7 @@ def select_extractable_resources(
             log.info("No changes since last extraction.")
             continue
         yield from (
-            (r, dataset)
+            r
             for r in dataset["resources"]
             if "zip" in r["format"].lower() and r.get("zip_extract", "")
         )
@@ -76,7 +76,6 @@ def select_extractable_resources(
 def extract_resource(
     resource: dict[str, Any], path: str
 ) -> Iterable[tuple[str, str]]:
-    os.chdir(path)
 
     log.info(
         "Downloading resource %s from URL %s into %s",
@@ -98,21 +97,22 @@ def extract_resource(
             resp.reason,
         )
         return
-    with open("input.zip", "wb") as dest:
+    with open(os.path.join(path, "input.zip"), "wb") as dest:
         for chunk in resp.iter_content(1024 * 1024):
             dest.write(chunk)
 
-    archive = zipfile.ZipFile("input.zip")
-    archive.extractall()
+    archive = zipfile.ZipFile(os.path.join(path, "input.zip"))
+    archive.extractall(path)
+
     yield from recurse_directory(path)
 
 
 def update_resource(
     filename: str,
     filepath: str,
-    ckan: ckanapi.LocalCKAN,
     resource: dict[str, Any],
     dataset: dict[str, Any],
+    context: dict[str, Any],
 ) -> str:
     with open(filepath, "rb") as stream:
         upload = FileStorage(stream, filename, filename)
@@ -121,16 +121,13 @@ def update_resource(
                 res["last_modified"] = datetime.utcnow().isoformat()
                 log.info("Updating resource %s", res["id"])
                 res["upload"] = upload
-                ckan.call_action(
-                    "resource_update",
-                    res,
-                )
+                tk.get_action("resource_update")(context, res)
                 break
         else:
 
             log.info("Creating new resource for file")
-            res = ckan.call_action(
-                "resource_create",
+            res = tk.get_action("resource_create")(
+                context,
                 {
                     "package_id": dataset["id"],
                     "name": filename,
@@ -162,7 +159,6 @@ def recurse_directory(path: str) -> Iterable[tuple[str, str]]:
             if os.path.isdir(os.path.join(path, f)):
                 yield from recurse_directory(os.path.join(path, f))
 
-    os.chdir(path)
     numInteresting = len(
         [
             f
@@ -177,13 +173,14 @@ def recurse_directory(path: str) -> Iterable[tuple[str, str]]:
         if os.path.isfile(os.path.join(path, f)) and numInteresting:
             if f.split(".").pop().lower() in _interesting_extensions():
                 yield (f, os.path.join(path, f))
+
         if os.path.isdir(os.path.join(path, f)):
             # only zip up folders if they contain at least one interesting file
             if has_interesting_files(os.path.join(path, f)):
                 zipf = zipfile.ZipFile(f + ".zip", "w", zipfile.ZIP_DEFLATED)
-                zipdir(f, zipf)
+                zipdir(os.path.join(path, f), zipf)
                 zipf.close()
-                yield (f + ".zip", f + ".zip")
+                yield (f + ".zip", os.path.join(path, f + ".zip"))
 
 
 def zipdir(path: str, ziph: zipfile.ZipFile):

@@ -1,15 +1,16 @@
-import logging
-import json
 import datetime
-import geomet
-from six import string_types
+import json
+import logging
 
 import ckan.plugins.toolkit as tk
+import geomet
+import requests
 from ckan.common import _
 from ckan.lib.navl.dictization_functions import Missing
+from six import string_types
 
-from ckanext.toolbelt.decorators import Collector
 from ckanext.agls.utils import details_for_gaz_id
+from ckanext.toolbelt.decorators import Collector
 
 log = logging.getLogger(__name__)
 validator, get_validators = Collector("dga").split()
@@ -24,7 +25,7 @@ def spatial_from_coverage(key, data, errors, context):
     id_ = coverage.split(":")[0]
     try:
         details = details_for_gaz_id(id_)
-    except KeyError as e:
+    except (KeyError, requests.RequestException) as e:
         log.warning("Cannot get details for GazId %s: %s", id_, e)
 
     valid_geojson = True
@@ -59,13 +60,15 @@ def default_now(value):
 
 @validator("user_password_validator")
 def user_password_validator(key, data, errors, context):
-    base_pass_text = ('Password should have at least 8 characters '
-                      'and use of at least three of the following '
-                      'character sets in passphrases: '
-                      'lower-case alphabetical characters (a-z), '
-                      'upper-case alphabetical characters (A-Z), '
-                      'numeric characters (0-9) or'
-                      'special characters')
+    base_pass_text = (
+        "Password should have at least 8 characters "
+        "and use of at least three of the following "
+        "character sets in passphrases: "
+        "lower-case alphabetical characters (a-z), "
+        "upper-case alphabetical characters (A-Z), "
+        "numeric characters (0-9) or"
+        "special characters"
+    )
 
     special_characters = r"!@#$%^&*()-+?_=,<>/"
     value = data[key]
@@ -73,11 +76,11 @@ def user_password_validator(key, data, errors, context):
     if isinstance(value, Missing):
         return
     elif not isinstance(value, string_types):
-        errors[('password',)].append(_(base_pass_text))
-    elif value == '':
+        errors[("password",)].append(_(base_pass_text))
+    elif value == "":
         return
     elif len(value) < 8:
-        errors[('password',)].append(_(base_pass_text))
+        errors[("password",)].append(_(base_pass_text))
 
     used_char_sets = 0
 
@@ -91,4 +94,4 @@ def user_password_validator(key, data, errors, context):
         used_char_sets += 1
 
     if used_char_sets < 3:
-        errors[('password',)].append(_(base_pass_text))
+        errors[("password",)].append(_(base_pass_text))

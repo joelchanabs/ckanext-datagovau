@@ -1,28 +1,28 @@
 from __future__ import annotations
 
 import inspect
-
+import logging
 from typing import Any
 
+import ckan.authz as authz
+import ckan.lib.helpers as h
+import ckan.lib.jobs as jobs
+import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as tk
-import ckan.model as model
-import ckan.authz as authz
-import ckan.lib.jobs as jobs
-import ckan.lib.helpers as h
-
-from ckanext.xloader.plugin import xloaderPlugin
 
 import ckanext.datagovau.helpers as helpers
-from ckanext.datagovau import validators, cli
+from ckanext.datagovau import cli, validators
+from ckanext.datagovau.geoserver_utils import (
+    CONFIG_PUBLIC_URL,
+    delete_ingested,
+    run_ingestor,
+)
 from ckanext.datagovau.logic.action import get_actions
 from ckanext.datagovau.logic.auth import get_auth_functions
-from ckanext.datagovau.geoserver_utils import (
-    run_ingestor,
-    delete_ingested,
-    CONFIG_PUBLIC_URL,
-)
+from ckanext.xloader.plugin import xloaderPlugin
 
+log = logging.getLogger(__name__)
 
 ingest_rest_list = ["kml", "kmz", "shp", "shapefile"]
 
@@ -120,55 +120,29 @@ class DataGovAuPlugin(p.SingletonPlugin):
     # IDomainObjectModification
 
     def notify(self, entity, operation):
-        if not tk.asbool(
+        if (
+            operation != "changed"
+            or not isinstance(entity, model.Package)
+            or entity.state != "active"
+        ):
+            return
+
+        if tk.asbool(
             tk.config.get(CONFIG_IGNORE_WORKFLOW, DEFAULT_IGNORE_WORKFLOW)
         ):
-            if operation == "changed" and isinstance(entity, model.Package):
-                if entity.state == "active":
-                    ingest_resources = [
-                        res
-                        for res in entity.resources
-                        if res.format.lower() in ingest_rest_list
-                    ]
-                    geoserver_resources = [
-                        res
-                        for res in entity.resources
-                        if tk.config[CONFIG_PUBLIC_URL] in res.url
-                    ]
+            return
 
-                    if ingest_resources:
-                        ingest_res = ingest_resources[0]
-                        send = False
+        ingest_resources = [
+            res
+            for res in entity.resources
+            if res.format.lower() in ingest_rest_list
+        ]
 
-                        if not geoserver_resources:
-                            send = True
-                        else:
-                            if [
-                                r
-                                for r in geoserver_resources
-                                if r.last_modified == ingest_res.last_modified
-                            ]:
-                                send = False
-                            else:
-                                geo_res = geoserver_resources[0]
-                                if (
-                                    ingest_res.last_modified
-                                    > geo_res.last_modified
-                                ):
-                                    send = True
+        if ingest_resources:
+            _do_geoserver_ingest(entity, ingest_resources)
+        else:
+            _do_spatial_ingest(entity.id)
 
-                        if send:
-                            try:
-                                jobs.enqueue(
-                                    run_ingestor,
-                                    kwargs={"pkg_id": entity.id},
-                                    rq_kwargs={"timeout": 1000},
-                                )
-                                h.flash_success(
-                                    f"Send {entity.id} for ingesting."
-                                )
-                            except Exception as e:
-                                h.flash_error(f"{e}")
 
     # IAuthFunctions
 
@@ -190,3 +164,65 @@ _stat_fq = {
 
 def _dga_stat_group_to_fq(group: str) -> str:
     return _stat_fq.get(group, "*:*")
+
+
+def _do_spatial_ingest(pkg_id: str):
+    """Enqueue old-style package ingestion.
+
+    Suits for tab, mapinfo, geotif, and grid formats, because geoserver cannot
+    ingest them via it's ingestion API.
+
+    """
+    log.debug("Try ingesting %s using local spatial ingestor", pkg_id)
+
+    tk.enqueue_job(
+        _do_ingesting_wrapper,
+        kwargs={"dataset_id": pkg_id},
+        rq_kwargs={"timeout": 1000},
+    )
+
+
+def _do_ingesting_wrapper(dataset_id: str):
+    """Trigger spatial ingestion for the dataset.
+
+    This wrapper can be enqueued as a background job. It allows web-node to
+    skip import of the `_spatialingestor`, which requires `GDAL` to be
+    installed system-wide.
+
+    """
+    from .cli._spatialingestor import do_ingesting
+
+    do_ingesting(dataset_id, False)
+
+
+def _do_geoserver_ingest(entity, ingest_resources):
+    geoserver_resources = [
+        res
+        for res in entity.resources
+        if tk.config[CONFIG_PUBLIC_URL] in res.url
+    ]
+
+    ingest_res = ingest_resources[0]
+    send = False
+
+    if not geoserver_resources:
+        send = True
+    else:
+        if [
+            r
+            for r in geoserver_resources
+            if r.last_modified == ingest_res.last_modified
+        ]:
+            send = False
+        else:
+            geo_res = geoserver_resources[0]
+            if ingest_res.last_modified > geo_res.last_modified:
+                send = True
+
+    if send:
+        log.debug("Try ingesting %s using geoserver ingest API", entity.id)
+        tk.enqueue_job(
+            run_ingestor,
+            kwargs={"pkg_id": entity.id},
+            rq_kwargs={"timeout": 1000},
+        )
