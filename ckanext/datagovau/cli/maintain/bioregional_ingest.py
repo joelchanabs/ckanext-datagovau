@@ -13,6 +13,7 @@ import click
 log = logging.getLogger(__name__)
 
 
+@click.command()
 @click.help_option("-h", "--help")
 @click.option(
     "--storage", required=True, help="Storage path for downloaded assesments"

@@ -28,9 +28,8 @@ def maintain():
     pass
 
 
-maintain.command(purge_deleted_users)
-maintain.command(bioregional_ingest)
-
+maintain.add_command(bioregional_ingest)
+maintain.add_command(purge_deleted_users)
 
 @maintain.command()
 @click.argument("ids", nargs=-1)

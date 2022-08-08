@@ -7,7 +7,7 @@ import click
 import ckan.model as model
 from ckan.model import core
 
-
+@click.command()
 @click.argument("user_ids", nargs=-1)
 def purge_deleted_users(user_ids: Optional[tuple[str]] = None):
     """
