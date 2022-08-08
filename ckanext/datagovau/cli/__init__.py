@@ -1,6 +1,6 @@
 import click
 
-from . import maintain
+from .maintain import maintain
 from .geoserveringestor import geoserver_ingestor
 from .googleanalytics import stats
 from .spatialingestor import spatial_ingestor
@@ -16,5 +16,5 @@ def dga():
     pass
 
 
-dga.add_command(maintain.maintain)
+dga.add_command(maintain)
 dga.add_command(stats)
