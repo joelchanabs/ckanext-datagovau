@@ -37,6 +37,16 @@ class TestDgaUserPurge:
         assert f"User <{user['name']}> has been purged" in result.output
         assert not result.exit_code
 
+
+    def test_purge_not_deleted_user(self, cli):
+        """Not deleted user musn't be purged"""
+        user: dict[str, Any] = factories.User()  # type: ignore
+
+        result = cli.invoke(purge_deleted_users, [user["name"]])
+        assert f"The user <{user['name']}> is not deleted and cannot be purged" in result.output
+        assert not result.exit_code
+        assert model.Session.query(model.User).filter_by(id=user["id"]).all()
+
     def test_purge_multiple_specific_users(self, cli):
         """You can specify multiple users to purge"""
         user1: dict[str, Any] = factories.User(state=State.DELETED)  # type: ignore

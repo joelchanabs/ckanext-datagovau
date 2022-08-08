@@ -7,6 +7,7 @@ import click
 import ckan.model as model
 from ckan.model import core
 
+
 @click.command()
 @click.argument("user_ids", nargs=-1)
 def purge_deleted_users(user_ids: Optional[tuple[str]] = None):
@@ -57,6 +58,11 @@ def _get_deleted_user_list() -> list[model.User]:
 
 
 def _purge_user(user: model.User) -> None:
+    if not user.is_deleted():
+        return click.secho(
+            f"The user <{user.name}> is not deleted and cannot be purged"
+        )
+
     if not _is_safe_to_purge(user):
         return click.secho(
             f"The user <{user.name}> cannot be purged", fg="red"
