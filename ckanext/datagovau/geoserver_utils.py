@@ -55,10 +55,8 @@ class Geoserverobj:
             for resource in resources:
                 fmt = resource["format"].lower()
 
-                is_source = (
-                    True
-                    if fmt in self.res_group_formats[format_group]
-                    else False
+                is_source = utils.contains(
+                    fmt, self.res_group_formats[format_group]
                 )
                 if "/geoserver" in resource["url"]:
                     self.geo_res_frmts[resource["format"].lower()] = resource[
@@ -67,11 +65,8 @@ class Geoserverobj:
                     continue
 
                 if is_source:
-                    if utils.contains(
-                        fmt, self.res_group_formats[format_group]
-                    ):
-                        self.filtered_resources[format_group].append(resource)
-                        is_there_res = True
+                    self.filtered_resources[format_group].append(resource)
+                    is_there_res = True
         return is_there_res
 
     def run_imports(self):
@@ -144,6 +139,9 @@ class Geoserverobj:
                         )
                 else:
                     log.error("An error appeard during task, skip.")
+            else:
+                log.error("No import tasks detected after a request to GeoServer")
+                log.error("GeoServer response: %s", import_data)
         else:
             log.error(
                 "Something went wrong while sending"
@@ -539,6 +537,7 @@ def run_ingestor(pkg_id: str):
     geo_obj = Geoserverobj()
 
     log.debug("Prepare filtered resources")
+
     res_group_exist = geo_obj.get_geo_res_list(dataset_dict)
     if not res_group_exist:
         log.info("No ingest resource for this Dataset")
