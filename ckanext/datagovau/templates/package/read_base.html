@@ -15,3 +15,9 @@
         </script>
     {% endif %}
 {% endblock %}
+
+  {% block package_organization %}
+    {% if pkg.organization and h.get_organization(pkg.organization.id) %}
+        {{ super() }}
+    {% endif %}
+  {% endblock %}
